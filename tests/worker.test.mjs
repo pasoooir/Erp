@@ -293,3 +293,38 @@ test("operator and reader can read their assigned subtree but cannot mutate it",
     assert.equal((await call("/api/v1/users",{headers:{cookie}})).status,403);
   }
 });
+
+
+test("audit events API is admin-only, paginated, and validates pagination", async () => {
+  const {call,DB}=harness();
+  assert.equal((await call("/api/v1/audit-events")).status,401);
+  const bootstrap=await call("/api/v1/auth/bootstrap",{
+    ...json({email:"audit-admin@example.com",display_name:"Audit Admin",password:"strong-password-123"}),
+    headers:{"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"}
+  });
+  assert.equal(bootstrap.status,201);
+  const cookie=cookieFrom(bootstrap);
+  for(let i=0;i<3;i++) DB.sqlite.prepare(
+    "INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json,created_at) VALUES (?,?,?,?,?,?,datetime('now',?))"
+  ).run("audit-test-"+i, null, "test.action."+i, "test_entity", "entity-"+i, JSON.stringify({index:i}), "+"+i+" seconds");
+  const first=await call("/api/v1/audit-events?limit=2&offset=0",{headers:{cookie}});
+  assert.equal(first.status,200);
+  const firstBody=await parse(first);
+  assert.equal(firstBody.data.length,2);
+  assert.equal(firstBody.meta.has_more,true);
+  assert.equal(firstBody.meta.count,2);
+  assert.equal(typeof firstBody.data[0].metadata,"object");
+  const second=await call("/api/v1/audit-events?limit=2&offset=2",{headers:{cookie}});
+  assert.equal(second.status,200);
+  assert.equal((await parse(second)).meta.has_more,false);
+  assert.equal((await call("/api/v1/audit-events?limit=101",{headers:{cookie}})).status,400);
+  assert.equal((await call("/api/v1/audit-events?offset=-1",{headers:{cookie}})).status,400);
+  const readerId="audit-reader";
+  const token="B".repeat(43);
+  const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(token));
+  const tokenHash=[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+  DB.sqlite.prepare("INSERT INTO users (id,email,display_name,password_hash) VALUES (?,?,?,?)").run(readerId,"audit-reader@example.com","Audit Reader","unused-test-hash");
+  DB.sqlite.prepare("INSERT INTO user_roles (user_id,role_id) VALUES (?,?)").run(readerId,"role-reader");
+  DB.sqlite.prepare("INSERT INTO sessions (token_hash,user_id,expires_at) VALUES (?,?,datetime('now','+1 hour'))").run(tokenHash,readerId);
+  assert.equal((await call("/api/v1/audit-events",{headers:{cookie:"erp_session="+token}})).status,403);
+});
