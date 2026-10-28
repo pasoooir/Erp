@@ -45,7 +45,7 @@ test("dashboard renders, searches, filters, shows detail, exports CSV and remain
   assert.equal(await prLink.getAttribute("href"),"https://github.com/pasoooir/Erp/pull/3");
   const commitLink=page.locator("#detail a").filter({hasText:"Commit"});
   await commitLink.waitFor();
-  assert.match(await commitLink.getAttribute("href"),/9eec3f05d8245edecfea4f22b2ee4a0368b49b45/);
+  assert.match(await commitLink.getAttribute("href"),/598cf373faef6cc15d3e6c9191a0bbe00cbd9046/);
   await page.locator("#detail").getByText(/CI 40710837253 passed/).waitFor();
   await page.locator("#search").fill("");
   await page.locator("#levelFilter").selectOption("6");
