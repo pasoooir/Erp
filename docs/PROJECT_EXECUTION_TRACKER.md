@@ -31,7 +31,7 @@
 | شناسه | معیار پذیرش | فایل‌ها و شواهد | وضعیت | اقدام بعدی |
 |---|---|---|---|---|
 | ERP-AUDIT-API-001 | API گزارش ممیزی با کنترل دسترسی، صفحه‌بندی و آزمون منفی | `src/index.js`, `tests/worker.test.mjs`; CI سبز [40740073673](https://github.com/pasoooir/Erp/actions/runs/40740073673); PR #4 | completed | حفظ کنترل مجوز و قرارداد صفحه‌بندی |
-| ERP-AUDIT-UI-001 | گزارش ممیزی فارسی RTL متصل به API با بارگذاری بیشتر و نمایش امن متن | `public/index.html`, `public/app.js`, `public/styles.css`; PR #4 | in_progress | اجرای مجدد CI و آزمون مرورگر؛ بررسی خطا/حالت خالی |
+| ERP-AUDIT-UI-001 | گزارش ممیزی فارسی RTL متصل به API با بارگذاری بیشتر، حالت خالی و نمایش امن متن | `public/index.html`, `public/app.js`, `public/styles.css`, `tests/worker-runtime-smoke.mjs`; CI سبز [40740502094](https://github.com/pasoooir/Erp/actions/runs/40740502094) شامل Chromium و Worker runtime؛ PR #4 | completed | توسعه گردش ویرایش نقش/محدوده کاربر |
 
 ## قرارداد پیشرفت و همگام‌سازی
 
