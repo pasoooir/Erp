@@ -37,7 +37,7 @@
           <div class="section-heading"><div><p class="eyebrow">داده‌های اصلی</p><h2>واحدهای سازمانی</h2><p>شرکت، سایت، واحد، سمت، خط تولید و انبار</p></div><span id="unitCount" class="count">۰</span></div>
           <div id="unitsLoading" class="empty">در حال بارگذاری…</div>
           <div id="unitsEmpty" class="empty hidden">هنوز واحدی ثبت نشده است.</div>
-          <div class="table-wrap"><table><thead><tr><th>کد</th><th>نام</th><th>نوع</th><th>والد</th><th>وضعیت</th></tr></thead><tbody id="unitsTable"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>کد</th><th>نام</th><th>نوع</th><th>والد</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody id="unitsTable"></tbody></table></div>
         </section>
         <section id="createPanel" class="panel hidden">
           <div class="section-heading"><div><p class="eyebrow">عملیات مجاز مدیر</p><h2>ثبت واحد سازمانی</h2><p>کد یکتا و نوع/والد معتبر لازم است.</p></div></div>
@@ -47,6 +47,16 @@
             <label>نوع واحد<select name="unit_type" required><option value="company">شرکت</option><option value="site">سایت / کارخانه</option><option value="department">واحد سازمانی</option><option value="position">سمت</option><option value="production_line">خط تولید</option><option value="warehouse">انبار</option></select></label>
             <label id="parentLabel">واحد والد<select name="parent_id"><option value="">بدون والد (فقط شرکت)</option></select></label>
             <button class="button" type="submit">ثبت واحد</button>
+          </form>
+        </section>
+        <section id="editPanel" class="panel hidden">
+          <div class="section-heading"><div><p class="eyebrow">ویرایش ساختار</p><h2>ویرایش واحد سازمانی</h2><p>کد و نوع واحد ثابت هستند؛ تغییر والد در سمت سرور اعتبارسنجی می‌شود.</p></div></div>
+          <form id="editUnitForm" class="form">
+            <input name="id" type="hidden">
+            <label>کد یکتا<input name="code" readonly></label>
+            <label>نام واحد<input name="name" maxlength="120" required></label>
+            <label>واحد والد<select name="parent_id"><option value="">بدون والد (فقط شرکت)</option></select></label>
+            <div class="button-row"><button class="button" type="submit">ذخیره تغییرات</button><button id="cancelEditButton" class="button secondary" type="button">لغو</button></div>
           </form>
         </section>
       </div>
