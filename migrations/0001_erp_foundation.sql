@@ -6,7 +6,7 @@ INSERT OR IGNORE INTO system_state (id, bootstrap_complete) VALUES (1, 0);
 
 CREATE TABLE IF NOT EXISTS roles (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE CHECK (name IN ('admin', 'operator', 'reader'))
+  name TEXT NOT NULL UNIQUE CHECK (name IN ('admin', 'org_manager', 'operator', 'reader'))
 );
 INSERT OR IGNORE INTO roles (id, name) VALUES ('role-admin', 'admin');
 INSERT OR IGNORE INTO roles (id, name) VALUES ('role-operator', 'operator');
