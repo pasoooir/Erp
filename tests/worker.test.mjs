@@ -266,3 +266,30 @@ test("admin provisions scoped users and org managers cannot cross organization b
   assert.equal((await call("/api/v1/users/"+(await parse(adminBootstrap)).data.id+"/deactivate",{method:"POST",headers:{cookie:adminCookie}})).status,409);
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action IN ('user.created','user.deactivated')").get().n,2);
 });
+test("operator and reader can read their assigned subtree but cannot mutate it", async () => {
+  const {call}=harness();
+  const bootstrap=await call("/api/v1/auth/bootstrap",{
+    ...json({email:"admin@example.com",display_name:"Admin",password:"strong-password-123"}),
+    headers:{"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"}
+  });
+  const adminCookie=cookieFrom(bootstrap);
+  const company=(await parse(await call("/api/v1/org-units",{...json({code:"ACME",name:"Company",unit_type:"company"}),headers:{"content-type":"application/json",cookie:adminCookie}}))).data;
+  const site=(await parse(await call("/api/v1/org-units",{...json({code:"SITE1",name:"Site",unit_type:"site",parent_id:company.id}),headers:{"content-type":"application/json",cookie:adminCookie}}))).data;
+  for(const role of ["operator","reader"]){
+    const created=await call("/api/v1/users",{...json({
+      email:role+"@example.com",display_name:role,password:"read-only-password-123",
+      roles:[role],scope_ids:[company.id]
+    }),headers:{"content-type":"application/json",cookie:adminCookie}});
+    assert.equal(created.status,201,await created.clone().text());
+    const login=await call("/api/v1/auth/login",json({email:role+"@example.com",password:"read-only-password-123"}));
+    assert.equal(login.status,200);
+    const cookie=cookieFrom(login);
+    const list=await call("/api/v1/org-units",{headers:{cookie}});
+    assert.equal(list.status,200);
+    assert.deepEqual((await parse(list)).data.map(unit=>unit.code).sort(),["ACME","SITE1"]);
+    assert.equal((await call("/api/v1/org-units",{...json({code:"DEPT1",name:"No write",unit_type:"department",parent_id:site.id}),headers:{"content-type":"application/json",cookie}})).status,403);
+    assert.equal((await call("/api/v1/org-units/"+site.id,{...json({name:"No update"}),method:"PATCH",headers:{"content-type":"application/json",cookie}})).status,403);
+    assert.equal((await call("/api/v1/org-units/"+site.id+"/deactivate",{method:"POST",headers:{cookie}})).status,403);
+    assert.equal((await call("/api/v1/users",{headers:{cookie}})).status,403);
+  }
+});
