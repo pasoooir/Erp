@@ -80,6 +80,33 @@ try {
   siteRow=page.locator("#unitsTable tr").filter({hasText:"SITE1"});
   await siteRow.locator('button[data-action="status"]').click();
   await siteRow.locator("td").nth(4).getByText("فعال").waitFor();
+
+  await page.locator("#unitForm input[name=code]").fill("OTHER");
+  await page.locator("#unitForm input[name=name]").fill("شرکت دوم");
+  await page.locator("#unitForm select[name=unit_type]").selectOption("company");
+  await page.locator("#unitForm button[type=submit]").click();
+  await page.locator("#unitsTable tr").filter({hasText:"OTHER"}).waitFor();
+  const otherOptions=await parentSelect.locator("option").evaluateAll(items=>items.map(option=>({value:option.value,text:option.textContent||""})));
+  const otherOption=otherOptions.find(option=>option.value&&option.text.includes("OTHER"));
+  assert.ok(otherOption,"Second company should be selectable");
+  await page.locator("#unitForm input[name=code]").fill("SITEB");
+  await page.locator("#unitForm input[name=name]").fill("کارخانه دوم");
+  await page.locator("#unitForm select[name=unit_type]").selectOption("site");
+  await parentSelect.selectOption(otherOption.value);
+  await page.locator("#unitForm button[type=submit]").click();
+  await page.locator("#unitsTable tr").filter({hasText:"SITEB"}).waitFor();
+  assert.equal(await page.locator("#unitsTable tr").count(),4);
+
+  await page.locator('#userForm input[name="display_name"]').fill("مدیر شرکت اول");
+  await page.locator('#userForm input[name="email"]').fill("manager@example.com");
+  await page.locator('#userForm input[name="password"]').fill("manager-password-123");
+  await page.locator('#userForm select[name="role"]').selectOption("org_manager");
+  const scopeOptions=await page.locator('#userForm select[name="scope_ids"] option').evaluateAll(items=>items.map(option=>({value:option.value,text:option.textContent||""})));
+  const scopeOption=scopeOptions.find(option=>option.value&&option.text.includes("ACME"));
+  assert.ok(scopeOption,"Company A should be selectable as a user scope");
+  await page.locator('#userForm select[name="scope_ids"]').selectOption(scopeOption.value);
+  await page.locator("#userForm button[type=submit]").click();
+  await page.locator("#usersTable tr").filter({hasText:"manager@example.com"}).waitFor();
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"mobile page should not overflow horizontally");
   assert.deepEqual(pageErrors,[]);
@@ -104,13 +131,32 @@ try {
   const me=await api("/api/v1/auth/me",{headers:{cookie}});
   assert.deepEqual(me.body.data.roles,["admin"]);
   const listed=await api("/api/v1/org-units",{headers:{cookie}});
-  assert.equal(listed.body.meta.count,2);
+  assert.equal(listed.body.meta.count,4);
   const invalidParent=await api("/api/v1/org-units",post({code:"POS1",name:"سمت آزمایشی",unit_type:"position",parent_id:listed.body.data.find(row=>row.code==="SITE1").id},{cookie}));
   assert.equal(invalidParent.response.status,400);
   const duplicate=await api("/api/v1/org-units",post({code:"ACME",name:"تکراری",unit_type:"company"},{cookie}));
   assert.equal(duplicate.response.status,409);
+
+  const managerLogin=await api("/api/v1/auth/login",post({email:"manager@example.com",password:"manager-password-123"}));
+  assert.equal(managerLogin.response.status,200);
+  const managerCookie=managerLogin.response.headers.get("set-cookie")?.split(";")[0];
+  assert.ok(managerCookie);
+  const scoped=await api("/api/v1/org-units",{headers:{cookie:managerCookie}});
+  assert.deepEqual(scoped.body.data.map(unit=>unit.code).sort(),["ACME","SITE1"]);
+  const ownChild=await api("/api/v1/org-units",post({code:"DEPT1",name:"واحد اول",unit_type:"department",parent_id:listed.body.data.find(unit=>unit.code==="SITE1").id},{cookie:managerCookie}));
+  assert.equal(ownChild.response.status,201);
+  const outsideChild=await api("/api/v1/org-units",post({code:"DEPT2",name:"واحد خارج از محدوده",unit_type:"department",parent_id:listed.body.data.find(unit=>unit.code==="SITEB").id},{cookie:managerCookie}));
+  assert.equal(outsideChild.response.status,403);
+  assert.equal((await api("/api/v1/org-units",post({code:"ROOT2",name:"شرکت غیرمجاز",unit_type:"company"},{cookie:managerCookie}))).response.status,403);
+  assert.equal((await api("/api/v1/org-units/"+listed.body.data.find(unit=>unit.code==="SITEB").id,{...post({name:"تغییر خارج از محدوده"}),method:"PATCH",headers:{cookie:managerCookie,"content-type":"application/json"}})).response.status,403);
+  assert.equal((await api("/api/v1/users",{headers:{cookie:managerCookie}})).response.status,403);
+
   await api("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
   assert.equal((await api("/api/v1/auth/me",{headers:{cookie}})).response.status,401);
+  const managerRow=page.locator("#usersTable tr").filter({hasText:"manager@example.com"});
+  await managerRow.locator('button[data-action="user-status"]').click();
+  await managerRow.locator("td").nth(4).getByText("غیرفعال").waitFor();
+  assert.equal((await api("/api/v1/auth/me",{headers:{cookie:managerCookie}})).response.status,401);
 
   await page.locator("#logoutButton").click();
   await page.locator("#loginForm").waitFor({state:"visible"});
