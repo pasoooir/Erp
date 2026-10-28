@@ -166,8 +166,12 @@ try {
   await page.locator('#loginForm input[name="password"]').fill(password);
   await page.locator("#loginForm button[type=submit]").click();
   await page.locator("#appPanel").waitFor({state:"visible"});
+  await page.locator("#auditPanel").waitFor({state:"visible"});
+  await page.locator("#auditTable tr").first().waitFor();
+  assert.ok(await page.locator("#auditTable tr").count()>0,"admin should see persisted audit events");
+  assert.equal(await page.locator("#moreAuditButton").isVisible(),false,"pagination button should hide when there is no next page");
   assert.deepEqual(pageErrors,[]);
-  console.log("Worker + Chromium smoke passed: D1 migration, bootstrap, login/logout, sessions, role checks, org hierarchy, uniqueness, RTL UI and mobile layout.");
+  console.log("Worker + Chromium smoke passed: D1 migration, bootstrap, login/logout, sessions, role checks, org hierarchy, audit API/UI, RTL and mobile layout.");
 } catch(error) {
   console.error(error);
   process.exitCode=1;
