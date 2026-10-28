@@ -46,8 +46,8 @@ try {
   await page.locator("#bootstrapForm").waitFor({state:"visible"});
   await page.locator('input[name="bootstrap_secret"]').fill(secret);
   await page.locator('input[name="display_name"]').fill("مدیر آزمایش");
-  await page.locator('input[name="email"]').fill("admin@example.com");
-  await page.locator('input[name="password"]').fill(password);
+  await page.locator('#bootstrapForm input[name="email"]').fill("admin@example.com");
+  await page.locator('#bootstrapForm input[name="password"]').fill(password);
   await page.locator("#bootstrapForm button[type=submit]").click();
   await page.locator("#appPanel").waitFor({state:"visible"});
   assert.equal(await page.locator("html").getAttribute("dir"),"rtl");
@@ -102,8 +102,8 @@ try {
 
   await page.locator("#logoutButton").click();
   await page.locator("#loginForm").waitFor({state:"visible"});
-  await page.locator('input[name="email"]').fill("admin@example.com");
-  await page.locator('input[name="password"]').fill(password);
+  await page.locator('#loginForm input[name="email"]').fill("admin@example.com");
+  await page.locator('#loginForm input[name="password"]').fill(password);
   await page.locator("#loginForm button[type=submit]").click();
   await page.locator("#appPanel").waitFor({state:"visible"});
   assert.deepEqual(pageErrors,[]);
