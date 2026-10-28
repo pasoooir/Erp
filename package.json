@@ -1,0 +1,14 @@
+{
+  "name": "automotive-erp-foundation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Initial Cloudflare Workers and D1 vertical slice for ERP authentication and organization units",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check src/index.js && node --check public/app.js && node --check scripts/gantt.mjs && node --check scripts/check-gantt-dashboard.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
