@@ -1,0 +1,28 @@
+name: Gantt data contract
+on:
+  push:
+    branches: [main]
+    paths:
+      - "erp-project.json"
+      - "scripts/gantt.mjs"
+      - ".github/workflows/gantt-contract.yml"
+  pull_request:
+    paths:
+      - "erp-project.json"
+      - "scripts/gantt.mjs"
+      - ".github/workflows/gantt-contract.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate-gantt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate Gantt JSON contract
+        run: node scripts/gantt.mjs --check
