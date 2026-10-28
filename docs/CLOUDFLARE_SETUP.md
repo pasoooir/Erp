@@ -47,3 +47,12 @@ The workflow never prints the token. It only prints database names, UUIDs, and j
 - GitHub repository connection: verified; the repository is `pasoooir/Erp`.
 - GitHub Actions → Cloudflare: **not yet verified**; it requires the human-managed GitHub variable and secret above, then a manual workflow run.
 - Worker deployment, production DB migration, and production data changes are intentionally out of scope.
+
+
+## نتیجه واقعی GitHub Actions
+
+اجرای [40710478859](https://github.com/pasoooir/Erp/actions/runs/40710478859) تأیید کرد که Secret با نام `CLOUDFLARE_API_TOKEN` در Runner موجود است و API آن را پذیرفته است: فهرست D1 خوانده شد و `SELECT` فقط‌خواندنی روی جدول `connectivity_probe` با marker مورد انتظار موفق بود. مقدار Token در log نمایش داده نشده است.
+
+اجرای فوق عمداً در مرحله نهایی شکست خورد، چون متغیر repository-level به نام `CLOUDFLARE_ACCOUNT_ID` در محیط Actions خالی بود. برای تکمیل پیکربندی، آن را در **Settings → Secrets and variables → Actions → Variables** در سطح همین repository ثبت کن؛ قرار دادن آن فقط در Secrets یا Environment دیگری برای این workflow کافی نیست. Workflow برای تشخیص، موقتاً از شناسه حساب تأییدشده استفاده کرد، اما در صورت نبود Variable همچنان non-green باقی می‌ماند.
+
+این نتیجه اعتبار Token برای عملیات D1 مورد آزمون را ثابت می‌کند، نه همه scopeهای گسترده یا همه سرویس‌های Cloudflare. Worker/Pages/KV هنوز در حساب دیده نشده‌اند و R2 به فعال‌سازی از Dashboard نیاز دارد.
