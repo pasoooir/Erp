@@ -120,3 +120,30 @@ test("rejects cross-origin requests and applies browser security headers", async
   assert.equal(asset.headers.get("content-security-policy")?.includes("frame-ancestors 'none'"),true);
   assert.equal(asset.headers.get("x-frame-options"),"DENY");
 });
+test("rejects oversized JSON bodies and rate-limits repeated login failures", async () => {
+  const {call}=harness();
+  const oversized=await call("/api/v1/auth/login",{
+    method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({email:"nobody@example.com",password:"x",padding:"x".repeat(18_000)})
+  });
+  assert.equal(oversized.status,400);
+  assert.equal((await parse(oversized)).error.code,"request_too_large");
+  for(let i=0;i<10;i++) {
+    const attempt=await call("/api/v1/auth/login",json({email:"nobody@example.com",password:"incorrect-password"}));
+    assert.equal(attempt.status,401);
+  }
+  const limited=await call("/api/v1/auth/login",json({email:"nobody@example.com",password:"incorrect-password"}));
+  assert.equal(limited.status,429);
+});
+test("concurrent bootstrap requests can create at most one first administrator", async () => {
+  const {call,DB}=harness();
+  const headers={"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"};
+  const body={email:"admin@example.com",display_name:"Admin",password:"strong-password-123"};
+  const [a,b]=await Promise.all([
+    call("/api/v1/auth/bootstrap",{...json(body),headers}),
+    call("/api/v1/auth/bootstrap",{...json(body),headers})
+  ]);
+  assert.deepEqual([a.status,b.status].sort(),[201,409]);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM users").get().n,1);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE r.name='admin'").get().n,1);
+});
