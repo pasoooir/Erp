@@ -72,8 +72,25 @@ async function readJson(request) {
   if (!type.toLowerCase().includes("application/json")) throw new Error("content_type");
   const length = Number(request.headers.get("content-length") || 0);
   if (length > 16_384) throw new Error("too_large");
+  const reader = request.body?.getReader();
+  if (!reader) throw new Error("json");
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > 16_384) {
+      await reader.cancel();
+      throw new Error("too_large");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
   try {
-    const value = await request.json();
+    const value = JSON.parse(new TextDecoder().decode(bytes));
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("json");
     return value;
   } catch { throw new Error("json"); }
