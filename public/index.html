@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="پایه عملیاتی ERP کارخانه خودروسازی؛ ورود امن و ساختار سازمانی">
+  <title>ERP کارخانه | ساختار سازمانی</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div><span class="mark" aria-hidden="true">ERP</span><div><h1>سامانه یکپارچه کارخانه</h1><p>پایه عملیاتی · مدیریت ساختار سازمانی</p></div></div>
+    <button id="logoutButton" class="button secondary hidden" type="button">خروج امن</button>
+  </header>
+  <main class="layout">
+    <section id="notice" class="notice" role="status" aria-live="polite">در حال بررسی وضعیت سامانه…</section>
+    <section id="authPanel" class="panel hidden">
+      <div class="section-heading"><div><p class="eyebrow">دسترسی امن</p><h2 id="authTitle">ورود به سامانه</h2><p id="authDescription">برای مشاهده اطلاعات سازمانی وارد شوید.</p></div></div>
+      <form id="bootstrapForm" class="form hidden" autocomplete="on">
+        <label>کلید راه‌اندازی اولیه<input name="bootstrap_secret" type="password" autocomplete="off" minlength="32" required><small>این کلید فقط در همین درخواست ارسال می‌شود و در مرورگر ذخیره نمی‌شود.</small></label>
+        <label>نام مدیر<input name="display_name" maxlength="120" autocomplete="name" required></label>
+        <label>ایمیل مدیر<input name="email" type="email" maxlength="254" autocomplete="email" required></label>
+        <label>رمز عبور مدیر<input name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required><small>حداقل ۱۲ نویسه؛ رمز به‌صورت متن ساده ذخیره نمی‌شود.</small></label>
+        <button class="button" type="submit">ایجاد نخستین مدیر</button>
+      </form>
+      <form id="loginForm" class="form hidden" autocomplete="on">
+        <label>ایمیل<input name="email" type="email" maxlength="254" autocomplete="username" required></label>
+        <label>رمز عبور<input name="password" type="password" maxlength="128" autocomplete="current-password" required></label>
+        <button class="button" type="submit">ورود</button>
+      </form>
+    </section>
+    <section id="appPanel" class="hidden">
+      <div class="welcome panel"><div><p class="eyebrow">فضای کاری</p><h2 id="welcomeTitle">ساختار سازمانی</h2><p id="welcomeText">اطلاعات از پایگاه داده خوانده می‌شود.</p></div><span class="live"><i></i> اتصال API</span></div>
+      <div class="grid">
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">داده‌های اصلی</p><h2>واحدهای سازمانی</h2><p>شرکت، سایت، واحد، سمت، خط تولید و انبار</p></div><span id="unitCount" class="count">۰</span></div>
+          <div id="unitsLoading" class="empty">در حال بارگذاری…</div>
+          <div id="unitsEmpty" class="empty hidden">هنوز واحدی ثبت نشده است.</div>
+          <div class="table-wrap"><table><thead><tr><th>کد</th><th>نام</th><th>نوع</th><th>والد</th><th>وضعیت</th></tr></thead><tbody id="unitsTable"></tbody></table></div>
+        </section>
+        <section id="createPanel" class="panel hidden">
+          <div class="section-heading"><div><p class="eyebrow">عملیات مجاز مدیر</p><h2>ثبت واحد سازمانی</h2><p>کد یکتا و نوع/والد معتبر لازم است.</p></div></div>
+          <form id="unitForm" class="form">
+            <label>کد یکتا<input name="code" minlength="2" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,31}" required><small>لاتین، عدد، خط تیره یا زیرخط</small></label>
+            <label>نام واحد<input name="name" maxlength="120" required></label>
+            <label>نوع واحد<select name="unit_type" required><option value="company">شرکت</option><option value="site">سایت / کارخانه</option><option value="department">واحد سازمانی</option><option value="position">سمت</option><option value="production_line">خط تولید</option><option value="warehouse">انبار</option></select></label>
+            <label id="parentLabel">واحد والد<select name="parent_id"><option value="">بدون والد (فقط شرکت)</option></select></label>
+            <button class="button" type="submit">ثبت واحد</button>
+          </form>
+        </section>
+      </div>
+    </section>
+    <footer>نسخه پایه توسعه · هر عملیات سمت سرور مجوزسنجی و ثبت ممیزی می‌شود. داده‌های این محیط آزمایشی هستند.</footer>
+  </main>
+</body>
+</html>
