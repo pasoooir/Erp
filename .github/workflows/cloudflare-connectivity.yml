@@ -1,6 +1,10 @@
 name: Cloudflare connectivity smoke test
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/cloudflare-connectivity.yml"
+      - "docs/CLOUDFLARE_SETUP.md"
   workflow_dispatch:
 
 permissions:
@@ -32,14 +36,14 @@ jobs:
             -H "Authorization: Bearer $CF_API_TOKEN" \
             "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database?per_page=100")"
           echo "$response" | jq -e '.success == true' >/dev/null
-          echo "$response" | jq -r '.result[] | [.name, .uuid, .jurisdiction] | @tsv' | sed 's/^/D1 database: /'
+          echo "$response" | jq -r '.result[] | .name' | sed 's/^/D1 database accessible: /'
           unset CF_API_TOKEN
 
       - name: Read back the dedicated connectivity probe
         env:
           CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          D1_DATABASE_ID: ${{ inputs.database_id }}
+          D1_DATABASE_ID: a8d8240e-190f-491f-a009-9cc47a085f90
         run: |
           set -euo pipefail
           payload='{"sql":"SELECT probe FROM connectivity_probe WHERE probe = ?","params":["github-cloudflare-api-ok"]}'
