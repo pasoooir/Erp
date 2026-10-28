@@ -36,7 +36,7 @@ After adding the variable and secret:
 
 1. Open **Actions → Cloudflare connectivity smoke test**.
 2. Choose **Run workflow**.
-3. Keep the default database UUID unless intentionally testing another disposable D1 database.
+3. The workflow is pinned to the dedicated connectivity-test database; it cannot be pointed at a production database through workflow inputs.
 4. Confirm both steps pass: listing D1 databases and reading the known probe marker.
 
 The workflow never prints the token. It only prints database names, UUIDs, and jurisdiction. Do not use this test workflow with a production database unless you deliberately want to grant the workflow read access to it.
