@@ -57,11 +57,9 @@ test("dashboard renders, searches, filters, shows detail, exports CSV and remain
   await page.setViewportSize({width:390,height:844});
   const columns=await page.locator(".controls").evaluate(el=>getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length);
   assert.equal(columns,1);
+  const errorPage=await browser.newPage();
+  await errorPage.goto(baseUrl+"/broken/Gonchar.html");
+  await errorPage.getByText(/فایل erp-project\\.json بارگذاری نشد/).waitFor();
+  await errorPage.close();
   assert.deepEqual(pageErrors,[]);
-});
-test("dashboard presents a clear error when its JSON file cannot load",async()=>{
-  const page=await browser.newPage();
-  await page.goto(baseUrl+"/broken/Gonchar.html");
-  await page.getByText(/فایل erp-project\.json بارگذاری نشد/).waitFor();
-  await page.close();
 });
