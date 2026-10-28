@@ -7,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import worker from "../src/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const migration = fs.readFileSync(path.join(root, "migrations/0001_erp_foundation.sql"), "utf8");
+const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
 class Statement {
   constructor(db, sql, values = []) { this.db=db; this.sql=sql; this.values=values; }
   bind(...values) { return new Statement(this.db, this.sql, values); }
@@ -16,7 +16,7 @@ class Statement {
   async run() { const result=this.db.prepare(this.sql).run(...this.values); return { success:true, meta:{changes:Number(result.changes),last_row_id:Number(result.lastInsertRowid||0)} }; }
 }
 class TestD1 {
-  constructor() { this.sqlite=new DatabaseSync(":memory:"); this.sqlite.exec("PRAGMA foreign_keys = ON"); this.sqlite.exec(migration); this.batchQueue=Promise.resolve(); }
+  constructor() { this.sqlite=new DatabaseSync(":memory:"); this.sqlite.exec("PRAGMA foreign_keys = ON"); for (const migration of migrations) this.sqlite.exec(migration); this.batchQueue=Promise.resolve(); }
   prepare(sql) { return new Statement(this.sqlite,sql); }
   async batch(statements) {
     const previous=this.batchQueue;
