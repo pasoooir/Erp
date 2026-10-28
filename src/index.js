@@ -145,6 +145,7 @@ async function login(request, env) {
   try { body = await readJson(request); } catch (e) {
     return fail(400, e.message === "too_large" ? "request_too_large" : e.message === "content_type" ? "content_type_required" : "invalid_json", "درخواست معتبر نیست.");
   }
+  await env.DB.prepare("DELETE FROM login_attempts WHERE attempted_at < datetime('now', '-1 day')").run();
   const email = normalizeEmail(body.email);
   const password = body.password;
   if (!validEmail(email) || typeof password !== "string" || password.length > 128)
@@ -223,7 +224,9 @@ async function route(request, env) {
   if (method === "POST" && url.pathname === "/api/v1/auth/login") return login(request, env);
   if (method === "POST" && url.pathname === "/api/v1/auth/logout") {
     const token = cookieValue(request, COOKIE_NAME);
+    const activeUser = token ? await sessionUser(request, env) : null;
     if (token) await env.DB.prepare("UPDATE sessions SET revoked_at=CURRENT_TIMESTAMP WHERE token_hash=? AND revoked_at IS NULL").bind(await sha256(token)).run();
+    if (activeUser) await audit(env, activeUser.id, "auth.logout", "user", activeUser.id);
     return json({ data: { logged_out: true } }, 200, { "set-cookie": sessionCookie("", 0) });
   }
   const user = await sessionUser(request, env);
