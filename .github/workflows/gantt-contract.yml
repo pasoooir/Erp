@@ -33,5 +33,10 @@ jobs:
         run: node scripts/gantt.mjs --check
       - name: Test Gantt validator positive and negative cases
         run: node --test tests/gantt.test.mjs
+      - name: Test summary sync on a temporary copy of the canonical plan
+        run: |
+          cp erp-project.json /tmp/erp-project-sync-test.json
+          node scripts/gantt.mjs --sync-summary --file /tmp/erp-project-sync-test.json
+          node scripts/gantt.mjs --check --file /tmp/erp-project-sync-test.json
       - name: Check dashboard JavaScript syntax
         run: node scripts/check-gantt-dashboard.mjs
