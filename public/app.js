@@ -1,7 +1,7 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const forms = { bootstrap:$("bootstrapForm"), login:$("loginForm"), unit:$("unitForm"), edit:$("editUnitForm"), users:$("userForm") };
-  let currentUser=null, units=[], users=[], auditEvents=[], auditOffset=0, auditHasMore=false;
+  const forms = { bootstrap:$("bootstrapForm"), login:$("loginForm"), unit:$("unitForm"), edit:$("editUnitForm"), users:$("userForm"), access:$("userAccessForm") };
+  let currentUser=null, units=[], users=[], auditEvents=[], auditOffset=0, auditHasMore=false, editingAccessUserId=null;
   const labels={company:"شرکت",site:"سایت / کارخانه",department:"واحد سازمانی",position:"سمت",production_line:"خط تولید",warehouse:"انبار"};
   const roleLabels={admin:"مدیر سراسری",org_manager:"مدیر واحد سازمانی",operator:"اپراتور",reader:"مشاهده‌گر"};
   function notice(message,kind=""){const el=$("notice");el.textContent=message;el.className="notice"+(kind?" "+kind:"");}
@@ -92,11 +92,22 @@
       }
       const actions=document.createElement("td");actions.className="table-actions";
       if(user.id!==currentUser?.id){
+        const edit=document.createElement("button");edit.type="button";edit.className="button small";edit.dataset.action="user-access-edit";edit.dataset.id=user.id;edit.textContent="ویرایش دسترسی";actions.appendChild(edit);
         const button=document.createElement("button");button.type="button";button.className="button small secondary";button.dataset.action="user-status";button.dataset.id=user.id;button.dataset.next=user.status==="active"?"deactivate":"activate";button.textContent=user.status==="active"?"غیرفعال‌سازی":"فعال‌سازی";actions.appendChild(button);
       }else{actions.textContent="حساب فعلی";}
       tr.appendChild(actions);body.appendChild(tr);
     }
   }
+  function startEditUserAccess(user){
+    editingAccessUserId=user.id;$("userAccessPanel").classList.remove("hidden");$("accessUserTitle").textContent="ویرایش دسترسی: "+user.display_name;
+    forms.access.elements.id.value=user.id;forms.access.elements.role.value=String(user.roles||"").split(",")[0]||"reader";
+    const selected=new Set(Array.isArray(user.scope_ids)?user.scope_ids.map(String):[]);const scopeText=String(user.scopes||"");const select=forms.access.elements.scope_ids;select.replaceChildren();
+    units.filter(unit=>unit.status==="active").forEach(unit=>{const option=new Option(unit.code+" — "+unit.name,unit.id);option.selected=selected.has(unit.id)||scopeText.includes(unit.code+" — "+unit.name);select.add(option);});
+    syncAccessScopeRequirement();$("userAccessPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+  }
+  function syncAccessScopeRequirement(){const isAdmin=forms.access.elements.role.value==="admin";const select=forms.access.elements.scope_ids;select.required=!isAdmin;select.disabled=isAdmin;if(isAdmin)Array.from(select.options).forEach(option=>option.selected=false);}
+  function cancelUserAccessEdit(){editingAccessUserId=null;forms.access.reset();$("userAccessPanel").classList.add("hidden");}
+
   async function loadUsers(){
     if(!currentUser?.roles.includes("admin"))return;
     try{users=await api("/api/v1/users");renderUsers();}
@@ -177,11 +188,17 @@
     }
   });
   $("usersTable").addEventListener("click",async event=>{
+    const editButton=event.target.closest("button[data-action='user-access-edit']");if(editButton){const user=users.find(item=>item.id===editButton.dataset.id);if(user)startEditUserAccess(user);return;}
     const button=event.target.closest("button[data-action='user-status']");if(!button)return;
     button.disabled=true;
     try{await api("/api/v1/users/"+encodeURIComponent(button.dataset.id)+"/"+button.dataset.next,{method:"POST"});notice(button.dataset.next==="deactivate"?"کاربر غیرفعال شد و نشست‌هایش باطل شدند.":"کاربر فعال شد.","success");await loadUsers();}
     catch(e){notice(e.message,"error");}finally{button.disabled=false;}
   });
+  forms.access.elements.role.addEventListener("change",syncAccessScopeRequirement);
+  forms.access.addEventListener("submit",async event=>{event.preventDefault();if(!editingAccessUserId)return;const submit=forms.access.querySelector("button");submit.disabled=true;const role=forms.access.elements.role.value;const scopeIds=Array.from(forms.access.elements.scope_ids.selectedOptions).map(option=>option.value);
+    try{await api("/api/v1/users/"+encodeURIComponent(editingAccessUserId),{method:"PATCH",body:JSON.stringify({roles:[role],scope_ids:role==="admin"?[]:scopeIds})});cancelUserAccessEdit();notice("نقش و محدوده دسترسی به‌روزرسانی شد.","success");await loadUsers();}
+    catch(e){notice(e.message,"error");}finally{submit.disabled=false;}});
+  $("cancelUserAccessButton").addEventListener("click",cancelUserAccessEdit);
   $("refreshAuditButton").addEventListener("click",()=>loadAudit(true));
   $("moreAuditButton").addEventListener("click",()=>loadAudit(false));
   $("cancelEditButton").addEventListener("click",cancelEdit);
