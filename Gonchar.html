@@ -45,7 +45,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const pct=n=>Math.max(0,Math.min(100,Number(n?.progress_percent)||0));
 const statusText=s=>({not_started:'شروع‌نشده',in_progress:'در حال اجرا',blocked:'مسدود',completed:'تکمیل‌شده'})[s||'not_started']||'تعریف‌نشده';
 const levelText=l=>({1:'حوزه سازمانی',2:'ماژول',3:'فرایند',4:'فعالیت اجرایی',5:'بسته کاری فنی',6:'وظیفه توسعه'})[l]||'سطح نامشخص';
-function indexTree(nodes,path=[]){for(const n of nodes||[]){n._path=[...path,n.name];allNodes.push(n);byId.set(n.id,n);indexTree(n.children||[],n._path)}}
+function indexTree(nodes,path=[],parentLevel=0){for(const n of nodes||[]){if(!n.level)n.level=parentLevel+1;n._path=[...path,n.name];allNodes.push(n);byId.set(n.id,n);indexTree(n.children||[],n._path,n.level)}}
 function descendants(n){let a=[];for(const c of n.children||[]){a.push(c,...descendants(c))}return a}
 function choose(id){selected=byId.get(id);if(!selected)return;renderDetail(selected);document.querySelectorAll('[data-node-id]').forEach(el=>el.classList.toggle('picked',el.dataset.nodeId===id))}
 function renderDetail(n){
