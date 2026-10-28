@@ -328,3 +328,37 @@ test("audit events API is admin-only, paginated, and validates pagination", asyn
   DB.sqlite.prepare("INSERT INTO sessions (token_hash,user_id,expires_at) VALUES (?,?,datetime('now','+1 hour'))").run(tokenHash,readerId);
   assert.equal((await call("/api/v1/audit-events",{headers:{cookie:"erp_session="+token}})).status,403);
 });
+
+test("admin can update user roles and scopes with audit and guardrails", async () => {
+  const {call,DB}=harness();
+  const bootstrap=await call("/api/v1/auth/bootstrap",{
+    ...json({email:"access-admin@example.com",display_name:"Access Admin",password:"strong-password-123"}),
+    headers:{"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"}
+  });
+  assert.equal(bootstrap.status,201);
+  const adminCookie=cookieFrom(bootstrap);
+  const company=await call("/api/v1/org-units",{
+    ...json({code:"SCOPE1",name:"محدوده اول",unit_type:"company"}),headers:{"content-type":"application/json",cookie:adminCookie}
+  });
+  assert.equal(company.status,201);
+  const companyId=(await parse(company)).data.id;
+  const created=await call("/api/v1/users",{
+    ...json({email:"target@example.com",display_name:"Target",password:"target-password-123",roles:["reader"],scope_ids:[companyId]}),
+    headers:{"content-type":"application/json",cookie:adminCookie}
+  });
+  assert.equal(created.status,201);
+  const target=(await parse(created)).data;
+  const updated=await call("/api/v1/users/"+target.id,{
+    ...json({roles:["org_manager"],scope_ids:[companyId]}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}
+  });
+  assert.equal(updated.status,200);
+  const updatedBody=(await parse(updated)).data;
+  assert.equal(updatedBody.roles,"org_manager");
+  assert.equal(updatedBody.scope_count,1);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='user.access_updated' AND entity_id=?").get(target.id).n,1);
+  assert.equal((await call("/api/v1/users/"+target.id,{...json({roles:["reader"],scope_ids:["missing-scope"]}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}})).status,400);
+  assert.equal((await call("/api/v1/users/"+target.id,{...json({roles:["admin"],scope_ids:[companyId]}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}})).status,400);
+  assert.equal((await call("/api/v1/users/"+target.id,{...json({roles:["reader"],scope_ids:[]}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}})).status,400);
+  assert.equal((await call("/api/v1/users/"+(await parse(bootstrap)).data.id,{...json({roles:["reader"],scope_ids:[companyId]}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}})).status,409);
+  assert.equal((await call("/api/v1/users/"+target.id,{...json({roles:["reader"],scope_ids:[companyId]}),method:"PATCH"})).status,401);
+});

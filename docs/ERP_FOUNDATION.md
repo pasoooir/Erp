@@ -33,6 +33,7 @@
 - `PATCH /api/v1/org-units/{id}`: تغییر نام/والد؛ جلوگیری از چرخه و انتقال خارج از scope.
 - `POST /api/v1/org-units/{id}/activate` و `/deactivate`: تغییر وضعیت با کنترل سلسله‌مراتب و audit.
 - `GET /api/v1/users`, `POST /api/v1/users`: فهرست/ایجاد کاربر فقط برای admin.
+- `PATCH /api/v1/users/{id}`: ویرایش نقش‌ها و محدوده‌های سازمانی با اعتبارسنجی، حفاظت آخرین مدیر فعال و ثبت ممیزی.
 - `POST /api/v1/users/{id}/activate` و `/deactivate`: تغییر وضعیت کاربر؛ جلوگیری از غیرفعال‌سازی حساب جاری و revoke نشست‌های کاربر غیرفعال‌شده.
 - `GET /api/health`: وضعیت Worker و اتصال D1.
 

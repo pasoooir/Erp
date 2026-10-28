@@ -26,11 +26,19 @@
 | ERP-FOUNDATION-002 | مهاجرت روی D1 توسعه اختصاصی | migration روی D1 محلی در CI اعمال شد؛ `wrangler.toml` از UUID محلی استفاده می‌کند؛ هیچ D1 راه‌دور تغییر نکرد | in_progress | بعداً یک D1 توسعه جداگانه تعیین و UUID آن را پس از بازبینی تنظیم کن؛ دیتابیس connectivity را استفاده نکن |
 | ERP-FOUNDATION-003 | رفتار واقعی UI مرورگر | Chromium smoke در [40715257341](https://github.com/pasoooir/Erp/actions/runs/40715257341) bootstrap/login، ایجاد/ویرایش/فعال‌سازی واحد، ایجاد کاربر با scope، نام محدوده، cross-company denial، revoke نشست، نقش‌های read-only و RTL موبایل را بررسی کرد | in_progress | آزمون مرورگری خطاهای فرم/شبکه و نقش غیرمدیر را بیشتر کن |
 
+## اقدام اجرایی جاری — ویرایش نقش و محدوده دسترسی
+
+- شاخه کاری: `feature/erp-user-role-scope-edit`.
+- API ویرایش `PATCH /api/v1/users/{id}` در این شاخه وجود دارد؛ رابط فعلی هنوز فرم ویرایش نقش/محدوده را ارائه نمی‌کند.
+- رابط مدیر برای انتخاب نقش و محدوده و ارسال `PATCH /api/v1/users/{id}` به `public/index.html` و `public/app.js` افزوده شد (commit `bbc476a3bd514964b93ea14e90ce7f37aeb87974`).
+- وضعیت همچنان `in_progress` است؛ تست syntax و CI برای این تغییر هنوز تأیید نشده‌اند. اقدام بعدی: بررسی نتیجه CI و اصلاح خطاهای احتمالی.
+
 ## کارهای افزوده‌شده
 
 | شناسه | معیار پذیرش | فایل‌ها و شواهد | وضعیت | اقدام بعدی |
 |---|---|---|---|---|
 | ERP-AUDIT-API-001 | API گزارش ممیزی با کنترل دسترسی، صفحه‌بندی و آزمون منفی | `src/index.js`, `tests/worker.test.mjs`; CI سبز [40740073673](https://github.com/pasoooir/Erp/actions/runs/40740073673); PR #4 | completed | حفظ کنترل مجوز و قرارداد صفحه‌بندی |
+| ERP-USER-ACCESS-API-001 | PATCH نقش/محدوده با اعتبارسنجی، ثبت ممیزی و منع تغییر حساب جاری | `src/index.js`, `tests/worker.test.mjs`, `docs/ERP_FOUNDATION.md`; شاخه `feature/erp-user-role-scope-edit` | in_progress | CI و آزمون منفی؛ سپس UI ویرایش نقش/محدوده |
 | ERP-AUDIT-UI-001 | گزارش ممیزی فارسی RTL متصل به API با بارگذاری بیشتر، حالت خالی و نمایش امن متن | `public/index.html`, `public/app.js`, `public/styles.css`, `tests/worker-runtime-smoke.mjs`; CI سبز [40740502094](https://github.com/pasoooir/Erp/actions/runs/40740502094) شامل Chromium و Worker runtime؛ PR #4 | completed | توسعه گردش ویرایش نقش/محدوده کاربر |
 
 ## قرارداد پیشرفت و همگام‌سازی
