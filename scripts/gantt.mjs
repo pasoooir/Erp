@@ -120,8 +120,14 @@ if (errors.length) {
 }
 function aggregate(node) {
   const children = Array.isArray(node.children) ? node.children : [];
-  if (!children.length) return { status: node.status || "not_started", progress: Number.isFinite(node.progress_percent) ? node.progress_percent : 0 };
+  if (!children.length) return {
+    status: node.status || "not_started",
+    progress: Number.isFinite(node.progress_percent) ? node.progress_percent : 0,
+    tracked: node.status !== undefined || node.progress_percent !== undefined
+  };
   const values = children.map(aggregate);
+  const tracked = node.status !== undefined || node.progress_percent !== undefined || values.some(value => value.tracked);
+  if (!tracked) return { status: "not_started", progress: 0, tracked: false };
   const statuses = values.map(value => value.status);
   const status = statuses.every(value => value === "completed") ? "completed"
     : statuses.includes("blocked") ? "blocked"
@@ -130,7 +136,7 @@ function aggregate(node) {
   const progress = Math.round(values.reduce((sum, value) => sum + value.progress, 0) / values.length * 100) / 100;
   node.status = status;
   node.progress_percent = progress;
-  return { status, progress };
+  return { status, progress, tracked: true };
 }
 if (sync) {
   project.resources.forEach(aggregate);
