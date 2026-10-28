@@ -211,7 +211,7 @@ test("authenticated non-admin users cannot read or mutate organization data", as
   const headers={cookie:"erp_session="+token};
   assert.equal((await call("/api/v1/auth/me",{headers})).status,200);
   assert.equal((await call("/api/v1/org-units",{headers})).status,403);
-  assert.equal((await call("/api/v1/org-units",json({code:"ACME",name:"Company",unit_type:"company",}),headers})).status,403);
+  assert.equal((await call("/api/v1/org-units",{...json({code:"ACME",name:"Company",unit_type:"company"}),headers})).status,403);
   assert.equal((await call("/api/v1/org-units/fake-id",{...json({name:"Changed"}),method:"PATCH",headers})).status,403);
   assert.equal((await call("/api/v1/org-units/fake-id/deactivate",{method:"POST",headers})).status,403);
 });
