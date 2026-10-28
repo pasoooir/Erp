@@ -195,8 +195,99 @@ function unitValidation(body) {
   if (parentId && (parentId.length > 64 || parentId === "null")) return { error: "شناسه والد معتبر نیست." };
   return { value: { code, name, unitType, parentId } };
 }
+async function hasPermission(env, user, resource, action, orgUnitId = null) {
+  if (user.roles.includes("admin")) return true;
+  const permission = await env.DB.prepare(`SELECT 1 FROM user_roles ur
+    JOIN role_permissions rp ON rp.role_id=ur.role_id
+    JOIN permissions p ON p.id=rp.permission_id
+    WHERE ur.user_id=? AND p.resource=? AND p.action=? LIMIT 1`).bind(user.id, resource, action).first();
+  if (!permission) return false;
+  if (!orgUnitId) return true;
+  const scoped = await env.DB.prepare(`WITH RECURSIVE accessible(id) AS (
+      SELECT org_unit_id FROM user_org_scopes WHERE user_id=?
+      UNION
+      SELECT child.id FROM org_units child JOIN accessible a ON child.parent_id=a.id
+    ) SELECT id FROM accessible WHERE id=? LIMIT 1`).bind(user.id, orgUnitId).first();
+  return Boolean(scoped);
+}
+async function safeUser(env, id) {
+  return env.DB.prepare(`SELECT u.id, u.email, u.display_name, u.status,
+      GROUP_CONCAT(DISTINCT r.name) AS roles,
+      GROUP_CONCAT(DISTINCT s.org_unit_id) AS scope_ids,
+      COUNT(DISTINCT s.org_unit_id) AS scope_count
+    FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id LEFT JOIN roles r ON r.id=ur.role_id
+    LEFT JOIN user_org_scopes s ON s.user_id=u.id
+    WHERE u.id=? GROUP BY u.id`).bind(id).first();
+}
+async function listUsers(env, user) {
+  if (!user.roles.includes("admin")) return fail(403, "forbidden", "فقط مدیر سامانه می‌تواند کاربران را مشاهده کند.");
+  const result = await env.DB.prepare(`SELECT u.id, u.email, u.display_name, u.status,
+      GROUP_CONCAT(DISTINCT r.name) AS roles,
+      GROUP_CONCAT(DISTINCT s.org_unit_id) AS scope_ids,
+      COUNT(DISTINCT s.org_unit_id) AS scope_count
+    FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id LEFT JOIN roles r ON r.id=ur.role_id
+    LEFT JOIN user_org_scopes s ON s.user_id=u.id
+    GROUP BY u.id ORDER BY u.email LIMIT 500`).all();
+  return json({ data: result.results, meta: { count: result.results.length } });
+}
+async function createUser(request, env, actor) {
+  if (!actor.roles.includes("admin")) return fail(403, "forbidden", "فقط مدیر سامانه می‌تواند کاربر بسازد.");
+  let body;
+  try { body = await readJson(request); } catch (e) {
+    return fail(e.message === "too_large" ? 413 : 400, e.message === "too_large" ? "request_too_large" : e.message === "content_type" ? "content_type_required" : "invalid_json", "درخواست معتبر نیست.");
+  }
+  const email=normalizeEmail(body.email), displayName=String(body.display_name||"").trim(), password=body.password;
+  const roleNames=Array.isArray(body.roles)?[...new Set(body.roles.map(value=>String(value).trim()))]:[];
+  const scopeIds=Array.isArray(body.scope_ids)?[...new Set(body.scope_ids.map(value=>String(value)))]:[];
+  if(!validEmail(email)||!displayName||displayName.length>120||!validPassword(password))
+    return fail(400,"validation_failed","ایمیل، نام نمایشی یا رمز عبور معتبر نیست.");
+  if(!roleNames.length||roleNames.length>4||roleNames.some(name=>!["admin","org_manager","operator","reader"].includes(name)))
+    return fail(400,"invalid_roles","نقش‌های انتخاب‌شده معتبر نیستند.");
+  if(scopeIds.length>50||scopeIds.some(id=>!id||id.length>64))
+    return fail(400,"invalid_scopes","فهرست محدوده‌های سازمانی معتبر نیست.");
+  const hasGlobalAdmin=roleNames.includes("admin");
+  if(hasGlobalAdmin&&scopeIds.length) return fail(400,"admin_scope_not_allowed","مدیر سامانه دسترسی سراسری دارد و به محدوده نیاز ندارد.");
+  if(!hasGlobalAdmin&&!scopeIds.length) return fail(400,"scope_required","برای کاربر غیرمدیر دست‌کم یک محدوده سازمانی تعیین کنید.");
+  const existing=await env.DB.prepare("SELECT id FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
+  if(existing)return fail(409,"email_exists","این ایمیل قبلاً ثبت شده است.");
+  const roleResult=await env.DB.prepare(`SELECT id,name FROM roles WHERE name IN (${roleNames.map(()=>"?").join(",")})`).bind(...roleNames).all();
+  if(roleResult.results.length!==roleNames.length)return fail(400,"invalid_roles","یکی از نقش‌ها در پایگاه داده تعریف نشده است.");
+  if(scopeIds.length){
+    const scopeResult=await env.DB.prepare(`SELECT id FROM org_units WHERE status='active' AND id IN (${scopeIds.map(()=>"?").join(",")})`).bind(...scopeIds).all();
+    if(scopeResult.results.length!==scopeIds.length)return fail(400,"invalid_scopes","یکی از محدوده‌ها وجود ندارد یا فعال نیست.");
+  }
+  const id=crypto.randomUUID(), passwordHash=await hashPassword(password);
+  const statements=[env.DB.prepare("INSERT INTO users (id,email,display_name,password_hash) VALUES (?,?,?,?)").bind(id,email,displayName,passwordHash)];
+  for(const role of roleResult.results) statements.push(env.DB.prepare("INSERT INTO user_roles (user_id,role_id) VALUES (?,?)").bind(id,role.id));
+  for(const scopeId of scopeIds) statements.push(env.DB.prepare("INSERT INTO user_org_scopes (user_id,org_unit_id,created_by) VALUES (?,?,?)").bind(id,scopeId,actor.id));
+  statements.push(env.DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json) VALUES (?,?, 'user.created','user',?,?)")
+    .bind(crypto.randomUUID(),actor.id,id,JSON.stringify({roles:roleNames,scope_count:scopeIds.length})));
+  try { await env.DB.batch(statements); }
+  catch(error) {
+    if(/UNIQUE constraint failed: users\.email/i.test(String(error)))return fail(409,"email_exists","این ایمیل قبلاً ثبت شده است.");
+    return fail(500,"user_create_failed","ایجاد کاربر انجام نشد.");
+  }
+  return json({data:await safeUser(env,id)},201);
+}
+async function setUserStatus(env, actor, id, nextStatus) {
+  if(!actor.roles.includes("admin"))return fail(403,"forbidden","فقط مدیر سامانه می‌تواند وضعیت کاربران را تغییر دهد.");
+  if(id===actor.id&&nextStatus==="disabled")return fail(409,"cannot_disable_self","مدیر واردشده نمی‌تواند حساب خودش را غیرفعال کند.");
+  const existing=await env.DB.prepare("SELECT id,email,status FROM users WHERE id=?").bind(id).first();
+  if(!existing)return fail(404,"user_not_found","کاربر پیدا نشد.");
+  if(existing.status===nextStatus)return json({data:await safeUser(env,id),meta:{changed:false}});
+  try{
+    const statements=[
+      env.DB.prepare("UPDATE users SET status=? WHERE id=? AND status=?").bind(nextStatus,id,existing.status),
+      env.DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json) SELECT ?, ?, ?, 'user', ?, ? WHERE changes()>0")
+        .bind(crypto.randomUUID(),actor.id,nextStatus==="disabled"?"user.deactivated":"user.activated",id,JSON.stringify({email:existing.email,previous_status:existing.status,status:nextStatus}))
+    ];
+    if(nextStatus==="disabled")statements.push(env.DB.prepare("UPDATE sessions SET revoked_at=CURRENT_TIMESTAMP WHERE user_id=? AND revoked_at IS NULL").bind(id));
+    const results=await env.DB.batch(statements);
+    if(Number(results[0]?.meta?.changes||0)===0)return fail(409,"user_changed","وضعیت کاربر هم‌زمان تغییر کرده است.");
+  }catch{return fail(500,"user_status_failed","تغییر وضعیت کاربر انجام نشد.");}
+  return json({data:await safeUser(env,id)});
+}
 async function createOrgUnit(request, env, user) {
-  if (!user.roles.includes("admin")) return fail(403, "forbidden", "برای ایجاد واحد سازمانی مجوز مدیر لازم است.");
   let body;
   try { body = await readJson(request); } catch (e) {
     return fail(400, e.message === "too_large" ? "request_too_large" : e.message === "content_type" ? "content_type_required" : "invalid_json", "درخواست معتبر نیست.");
@@ -209,6 +300,9 @@ async function createOrgUnit(request, env, user) {
     const parent = await env.DB.prepare("SELECT id, unit_type, status FROM org_units WHERE id=?").bind(parentId).first();
     if (!parent || parent.status !== "active") return fail(400, "invalid_parent", "واحد والد وجود ندارد یا فعال نیست.");
     if (!ALLOWED_CHILD_TYPES[unitType].has(parent.unit_type)) return fail(400, "invalid_parent_type", "نوع واحد والد برای این ساختار مجاز نیست.");
+  }
+  if (!user.roles.includes("admin")) {
+    if (!parentId || !await hasPermission(env,user,"org_unit","create",parentId)) return fail(403,"forbidden","ایجاد واحد فقط در محدوده سازمانی مجاز امکان‌پذیر است.");
   }
   const id = crypto.randomUUID();
   try {
@@ -225,7 +319,6 @@ async function createOrgUnit(request, env, user) {
   return json({ data: { id, parent_id: parentId, code, name, unit_type: unitType, status: "active" } }, 201);
 }
 async function updateOrgUnit(request, env, user, id) {
-  if (!user.roles.includes("admin")) return fail(403, "forbidden", "برای ویرایش واحد سازمانی مجوز مدیر لازم است.");
   let body;
   try { body = await readJson(request); } catch (e) {
     return fail(e.message === "too_large" ? 413 : 400, e.message === "too_large" ? "request_too_large" : e.message === "content_type" ? "content_type_required" : "invalid_json", "درخواست معتبر نیست.");
@@ -234,6 +327,7 @@ async function updateOrgUnit(request, env, user, id) {
     return fail(400, "validation_failed", "فقط نام و واحد والد قابل ویرایش هستند.");
   const existing = await env.DB.prepare("SELECT id, parent_id, code, name, unit_type, status FROM org_units WHERE id=?").bind(id).first();
   if (!existing) return fail(404, "org_unit_not_found", "واحد سازمانی پیدا نشد.");
+  if (!await hasPermission(env,user,"org_unit","update",id)) return fail(403,"forbidden","ویرایش خارج از محدوده سازمانی مجاز نیست.");
   if (existing.status !== "active") return fail(409, "org_unit_inactive", "ابتدا واحد سازمانی را فعال کنید.");
   const name = body.name === undefined ? existing.name : String(body.name || "").trim();
   const parentId = body.parent_id === undefined ? existing.parent_id : (body.parent_id == null || body.parent_id === "" ? null : String(body.parent_id));
@@ -267,9 +361,10 @@ async function updateOrgUnit(request, env, user, id) {
   return json({ data: updated });
 }
 async function setOrgUnitStatus(env, user, id, nextStatus) {
-  if (!user.roles.includes("admin")) return fail(403, "forbidden", "برای تغییر وضعیت واحد سازمانی مجوز مدیر لازم است.");
   const existing = await env.DB.prepare("SELECT id, parent_id, code, name, unit_type, status FROM org_units WHERE id=?").bind(id).first();
   if (!existing) return fail(404, "org_unit_not_found", "واحد سازمانی پیدا نشد.");
+  const permissionAction=nextStatus==="inactive"?"deactivate":"activate";
+  if (!await hasPermission(env,user,"org_unit",permissionAction,id)) return fail(403,"forbidden","تغییر وضعیت خارج از محدوده سازمانی مجاز نیست.");
   if (existing.status === nextStatus) return json({ data: existing, meta: { changed: false } });
   if (nextStatus === "inactive") {
     const children = await env.DB.prepare("SELECT COUNT(*) AS count FROM org_units WHERE parent_id=? AND status='active'").bind(id).first();
@@ -322,14 +417,39 @@ async function route(request, env) {
   }
   if (url.pathname === "/api/v1/org-units" && method === "GET") {
     if (!user) return fail(401, "unauthenticated", "برای مشاهده ساختار سازمانی وارد سامانه شو.");
-    if (!user.roles.includes("admin")) return fail(403, "forbidden", "تا زمان تکمیل مجوزهای محدودشده سازمانی، مشاهده ساختار فقط برای مدیر مجاز است.");
-    const result = await env.DB.prepare(`SELECT u.id, u.parent_id, p.name AS parent_name, u.code, u.name, u.unit_type, u.status, u.created_at, u.updated_at
-      FROM org_units u LEFT JOIN org_units p ON p.id=u.parent_id ORDER BY u.code LIMIT 1000`).all();
+    const result = user.roles.includes("admin")
+      ? await env.DB.prepare(`SELECT u.id, u.parent_id, p.name AS parent_name, u.code, u.name, u.unit_type, u.status, u.created_at, u.updated_at
+          FROM org_units u LEFT JOIN org_units p ON p.id=u.parent_id ORDER BY u.code LIMIT 1000`).all()
+      : await (async()=>{
+          if(!await hasPermission(env,user,"org_unit","read"))return null;
+          return env.DB.prepare(`WITH RECURSIVE accessible(id) AS (
+              SELECT org_unit_id FROM user_org_scopes WHERE user_id=?
+              UNION
+              SELECT child.id FROM org_units child JOIN accessible a ON child.parent_id=a.id
+            )
+            SELECT u.id,u.parent_id,p.name AS parent_name,u.code,u.name,u.unit_type,u.status,u.created_at,u.updated_at
+            FROM org_units u LEFT JOIN org_units p ON p.id=u.parent_id AND p.id IN (SELECT id FROM accessible)
+            WHERE u.id IN (SELECT id FROM accessible) ORDER BY u.code LIMIT 1000`).bind(user.id).all();
+        })();
+    if(!result)return fail(403,"forbidden","این حساب محدوده سازمانی برای مشاهده ندارد.");
     return json({ data: result.results, meta: { count: result.results.length } });
   }
   if (url.pathname === "/api/v1/org-units" && method === "POST") {
     if (!user) return fail(401, "unauthenticated", "برای ایجاد واحد سازمانی وارد سامانه شو.");
     return createOrgUnit(request, env, user);
+  }
+  if (url.pathname === "/api/v1/users" && method === "GET") {
+    if (!user) return fail(401,"unauthenticated","برای مشاهده کاربران وارد سامانه شو.");
+    return listUsers(env,user);
+  }
+  if (url.pathname === "/api/v1/users" && method === "POST") {
+    if (!user) return fail(401,"unauthenticated","برای ایجاد کاربر وارد سامانه شو.");
+    return createUser(request,env,user);
+  }
+  const userRoute=url.pathname.match(new RegExp("^/api/v1/users/([^/]+)/(activate|deactivate)$"));
+  if(userRoute&&method==="POST"){
+    if(!user)return fail(401,"unauthenticated","برای تغییر وضعیت کاربر وارد سامانه شو.");
+    return setUserStatus(env,user,userRoute[1],userRoute[2]==="activate"?"active":"disabled");
   }
   const unitRoute = url.pathname.match(new RegExp("^/api/v1/org-units/([^/]+)(?:/(activate|deactivate))?$"));
   if (unitRoute) {
