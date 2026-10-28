@@ -178,26 +178,19 @@ test("admin can edit organization units and enforce hierarchy-aware activation l
   const unknownField=await call("/api/v1/org-units/"+dept.id,{...json({status:"inactive"}),method:"PATCH",headers:{"content-type":"application/json",cookie}});
   assert.equal(unknownField.status,400);
 
-  const companyDeactivate=await call("/api/v1/org-units/"+company.id+"/deactivate",{method:"POST",headers:{cookie}});
-  assert.equal(companyDeactivate.status,409);
-  const childDeactivate=await call("/api/v1/org-units/"+child.id+"/deactivate",{method:"POST",headers:{cookie}});
-  assert.equal(childDeactivate.status,200);
-  const deptDeactivate=await call("/api/v1/org-units/"+dept.id+"/deactivate",{method:"POST",headers:{cookie}});
-  assert.equal(deptDeactivate.status,409);
-  const deptDeactivateAfterChild=await call("/api/v1/org-units/"+dept.id+"/deactivate",{method:"POST",headers:{cookie}});
-  assert.equal(deptDeactivateAfterChild.status,409);
-  const siteDeactivate=await call("/api/v1/org-units/"+site.id+"/deactivate",{method:"POST",headers:{cookie}});
-  assert.equal(siteDeactivate.status,409);
-  const childActivate=await call("/api/v1/org-units/"+child.id+"/activate",{method:"POST",headers:{cookie}});
-  assert.equal(childActivate.status,409);
+  assert.equal((await call("/api/v1/org-units/"+company.id+"/deactivate",{method:"POST",headers:{cookie}})).status,409);
+  assert.equal((await call("/api/v1/org-units/"+dept.id+"/deactivate",{method:"POST",headers:{cookie}})).status,409);
   assert.equal((await call("/api/v1/org-units/"+child.id+"/deactivate",{method:"POST",headers:{cookie}})).status,200);
   assert.equal((await call("/api/v1/org-units/"+dept.id+"/deactivate",{method:"POST",headers:{cookie}})).status,200);
   assert.equal((await call("/api/v1/org-units/"+site.id+"/deactivate",{method:"POST",headers:{cookie}})).status,200);
   assert.equal((await call("/api/v1/org-units/"+company.id+"/deactivate",{method:"POST",headers:{cookie}})).status,200);
+  assert.equal((await call("/api/v1/org-units/"+child.id+"/activate",{method:"POST",headers:{cookie}})).status,409);
   assert.equal((await call("/api/v1/org-units/"+site.id+"/activate",{method:"POST",headers:{cookie}})).status,409);
   assert.equal((await call("/api/v1/org-units/"+company.id+"/activate",{method:"POST",headers:{cookie}})).status,200);
   assert.equal((await call("/api/v1/org-units/"+site.id+"/activate",{method:"POST",headers:{cookie}})).status,200);
-  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action IN ('org_unit.updated','org_unit.activated','org_unit.deactivated')").get().n,8);
+  assert.equal((await call("/api/v1/org-units/"+dept.id+"/activate",{method:"POST",headers:{cookie}})).status,200);
+  assert.equal((await call("/api/v1/org-units/"+child.id+"/activate",{method:"POST",headers:{cookie}})).status,200);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action IN ('org_unit.updated','org_unit.activated','org_unit.deactivated')").get().n,9);
 });
 test("organization lifecycle endpoints still require a session and admin role", async () => {
   const {call}=harness();
