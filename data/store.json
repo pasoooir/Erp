@@ -1,0 +1,147 @@
+{
+  "organizations": [
+    {
+      "id": "org-1",
+      "name": "CarTech Industrial Group",
+      "status": "active",
+      "country": "IR",
+      "city": "Tehran",
+      "registeredNo": "RT-10001"
+    }
+  ],
+  "users": [
+    {
+      "id": "user-1",
+      "name": "Sajjad Rahimi",
+      "email": "admin@cartech.ir",
+      "password": "admin123",
+      "role": "admin",
+      "department": "Executive",
+      "organizationId": "org-1",
+      "status": "active",
+      "token": ""
+    },
+    {
+      "id": "user-2",
+      "name": "Farid Nouri",
+      "email": "warehouse@cartech.ir",
+      "password": "admin123",
+      "role": "warehouse_manager",
+      "department": "Warehouse",
+      "organizationId": "org-1",
+      "status": "active",
+      "token": ""
+    },
+    {
+      "id": "user-3",
+      "name": "Neda Ahmadi",
+      "email": "sales@cartech.ir",
+      "password": "admin123",
+      "role": "sales_manager",
+      "department": "Sales",
+      "organizationId": "org-1",
+      "status": "active",
+      "token": ""
+    }
+  ],
+  "warehouses": [
+    { "id": "wh-1", "name": "Main Warehouse", "code": "WH-01", "city": "Tehran" },
+    { "id": "wh-2", "name": "Spare Parts Hub", "code": "WH-02", "city": "Isfahan" }
+  ],
+  "customers": [
+    { "id": "cust-1", "name": "Tehran Auto Supply", "type": "dealer", "creditLimit": 250000000 },
+    { "id": "cust-2", "name": "Narmak Motors", "type": "retail", "creditLimit": 90000000 },
+    { "id": "cust-3", "name": "Khodro Gharb", "type": "fleet", "creditLimit": 600000000 }
+  ],
+  "vendors": [
+    { "id": "ven-1", "name": "Apex Steel Co.", "category": "raw_material", "paymentTerms": "NET-30" },
+    { "id": "ven-2", "name": "ElectroDrive Parts", "category": "electrical", "paymentTerms": "NET-15" }
+  ],
+  "products": [
+    {
+      "id": "prod-1",
+      "sku": "ENG-1100",
+      "name": "Engine Block A110",
+      "category": "Casting",
+      "unit": "pcs",
+      "unitCost": 1800000,
+      "salePrice": 2400000,
+      "stock": 144,
+      "minStock": 30,
+      "warehouseId": "wh-1"
+    },
+    {
+      "id": "prod-2",
+      "sku": "ALT-505",
+      "name": "Alternator 12V",
+      "category": "Electrical",
+      "unit": "pcs",
+      "unitCost": 420000,
+      "salePrice": 590000,
+      "stock": 88,
+      "minStock": 25,
+      "warehouseId": "wh-2"
+    },
+    {
+      "id": "prod-3",
+      "sku": "TYR-280",
+      "name": "Heavy Duty Tire",
+      "category": "Automotive",
+      "unit": "pcs",
+      "unitCost": 1200000,
+      "salePrice": 1650000,
+      "stock": 66,
+      "minStock": 20,
+      "warehouseId": "wh-1"
+    }
+  ],
+  "purchaseOrders": [
+    {
+      "id": "po-1",
+      "vendorId": "ven-1",
+      "vendorName": "Apex Steel Co.",
+      "status": "approved",
+      "total": 36000000,
+      "createdAt": "2026-10-10T08:30:00.000Z"
+    },
+    {
+      "id": "po-2",
+      "vendorId": "ven-2",
+      "vendorName": "ElectroDrive Parts",
+      "status": "in_transit",
+      "total": 18500000,
+      "createdAt": "2026-10-20T14:15:00.000Z"
+    }
+  ],
+  "salesOrders": [
+    {
+      "id": "so-1",
+      "customerId": "cust-1",
+      "customerName": "Tehran Auto Supply",
+      "status": "shipped",
+      "total": 18000000,
+      "createdAt": "2026-10-15T09:00:00.000Z"
+    },
+    {
+      "id": "so-2",
+      "customerId": "cust-2",
+      "customerName": "Narmak Motors",
+      "status": "draft",
+      "total": 9300000,
+      "createdAt": "2026-10-24T11:30:00.000Z"
+    }
+  ],
+  "invoices": [
+    { "id": "inv-1", "number": "INV-2026-001", "total": 18000000, "status": "paid", "customerId": "cust-1" },
+    { "id": "inv-2", "number": "INV-2026-002", "total": 9300000, "status": "open", "customerId": "cust-2" }
+  ],
+  "accountingEntries": [
+    { "id": "acc-1", "type": "expense", "account": "Raw Materials", "amount": 36000000, "date": "2026-10-10" },
+    { "id": "acc-2", "type": "revenue", "account": "Sales", "amount": 18000000, "date": "2026-10-15" },
+    { "id": "acc-3", "type": "asset", "account": "Inventory", "amount": 17500000, "date": "2026-10-22" }
+  ],
+  "auditLogs": [
+    { "id": "log-1", "action": "login", "user": "Sajjad Rahimi", "createdAt": "2026-10-28T08:00:00.000Z" },
+    { "id": "log-2", "action": "stock_updated", "user": "Farid Nouri", "createdAt": "2026-10-28T09:10:00.000Z" }
+  ]
+}

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CarTech ERP</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="authView" class="auth-shell">
+      <div class="login-box">
+        <h1>CarTech ERP</h1>
+        <p>سامانه یکپارچه مدیریت کارخانه و کسب‌وکار</p>
+        <form id="loginForm">
+          <label>
+            ایمیل
+            <input type="email" id="email" value="admin@cartech.ir" required />
+          </label>
+          <label>
+            رمز عبور
+            <input type="password" id="password" value="admin123" required />
+          </label>
+          <button type="submit">ورود</button>
+        </form>
+        <div id="loginError" class="error hidden"></div>
+      </div>
+    </div>
+
+    <div id="appView" class="hidden">
+      <header class="topbar">
+        <div>
+          <h2>داشبورد ERP</h2>
+        </div>
+        <div class="topbar-actions">
+          <span id="userBadge">کاربر</span>
+          <button id="logoutBtn">خروج</button>
+        </div>
+      </header>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard">داشبورد</button>
+        <button class="nav-item" data-view="organizations">سازمان</button>
+        <button class="nav-item" data-view="users">کاربران</button>
+        <button class="nav-item" data-view="products">محصولات</button>
+        <button class="nav-item" data-view="warehouse">انبار</button>
+        <button class="nav-item" data-view="purchases">خرید</button>
+        <button class="nav-item" data-view="sales">فروش</button>
+        <button class="nav-item" data-view="finance">حسابداری</button>
+        <button class="nav-item" data-view="audit">ممیزی</button>
+      </nav>
+
+      <main>
+        <section id="dashboardView" class="view active">
+          <div id="summaryCards" class="cards"></div>
+          <div class="panel-grid">
+            <div class="panel">
+              <h3>فعالیت اخیر</h3>
+              <div id="activityList"></div>
+            </div>
+            <div class="panel">
+              <h3>موجودی کم</h3>
+              <div id="lowStockList"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="organizationsView" class="view hidden">
+          <div class="toolbar">
+            <h3>سازمان‌ها</h3>
+            <button id="addOrgBtn" class="primary-btn">+ اضافه کردن</button>
+          </div>
+          <div id="organizationsTable" class="table-wrap"></div>
+        </section>
+
+        <section id="usersView" class="view hidden">
+          <div class="toolbar">
+            <h3>کاربران</h3>
+            <button id="addUserBtn" class="primary-btn">+ کاربر جدید</button>
+          </div>
+          <div id="usersTable" class="table-wrap"></div>
+        </section>
+
+        <section id="productsView" class="view hidden">
+          <div class="toolbar">
+            <h3>محصولات</h3>
+            <button id="addProductBtn" class="primary-btn">+ محصول جدید</button>
+          </div>
+          <div id="productsTable" class="table-wrap"></div>
+        </section>
+
+        <section id="warehouseView" class="view hidden">
+          <div class="toolbar">
+            <h3>انبار</h3>
+            <button id="adjustStockBtn" class="primary-btn">+ تنظیم موجودی</button>
+          </div>
+          <div id="warehouseTable" class="table-wrap"></div>
+        </section>
+
+        <section id="purchasesView" class="view hidden">
+          <div class="toolbar">
+            <h3>سفارش‌های خرید</h3>
+            <button id="addPurchaseBtn" class="primary-btn">+ سفارش خرید</button>
+          </div>
+          <div id="purchaseOrdersTable" class="table-wrap"></div>
+        </section>
+
+        <section id="salesView" class="view hidden">
+          <div class="toolbar">
+            <h3>سفارش‌های فروش</h3>
+            <button id="addSalesBtn" class="primary-btn">+ سفارش فروش</button>
+          </div>
+          <div id="salesOrdersTable" class="table-wrap"></div>
+        </section>
+
+        <section id="financeView" class="view hidden">
+          <div id="financeCards" class="cards"></div>
+          <div class="panel">
+            <h3>حسابداری</h3>
+            <div id="financeTable" class="table-wrap"></div>
+          </div>
+        </section>
+
+        <section id="auditView" class="view hidden">
+          <div class="panel">
+            <h3>گزارش ممیزی</h3>
+            <div id="auditTable" class="table-wrap"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

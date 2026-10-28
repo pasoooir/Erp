@@ -1,0 +1,11 @@
+{
+  "name": "erp-factory-mvp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ERP factory management MVP built with Node.js and a file-based data store.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}
