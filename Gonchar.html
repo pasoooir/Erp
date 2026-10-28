@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>داشبورد گانت چارت ERP</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#121d30;--line:#263750;--muted:#9aabc3;--text:#eef4ff;--accent:#68b6ff;--good:#62d6ad}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#0b1220,#101b2d);color:var(--text);font-family:Tahoma,"Segoe UI",sans-serif;line-height:1.7}
+header{padding:30px max(18px,calc((100% - 1400px)/2));border-bottom:1px solid var(--line);background:#101a2a}
+h1{margin:0;font-size:clamp(24px,4vw,38px)}.subtitle{color:var(--muted);margin:6px 0 0}
+main{max-width:1400px;margin:auto;padding:24px 18px 60px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.card,.panel{background:rgba(18,29,48,.94);border:1px solid var(--line);border-radius:16px;padding:16px}.label{color:var(--muted);font-size:13px}.value{font-size:28px;font-weight:700}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.toolbar input,.toolbar select{background:#0d1727;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;min-width:180px}
+.levels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}.level{border:1px solid var(--line);padding:12px;border-radius:12px;background:#0e192a}.level b{display:block}.level span{font-size:12px;color:var(--muted)}
+.tree{display:grid;gap:10px}.domain{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#111c2e}.domain>summary{list-style:none;cursor:pointer;padding:15px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between}.domain>summary::-webkit-details-marker{display:none}.domain>summary:hover{background:#17253a}.summary-title{font-weight:700}.meta{color:var(--muted);font-size:12px}.bar{height:6px;background:#28364b;border-radius:20px;overflow:hidden;margin-top:7px;min-width:80px}.bar i{display:block;height:100%;width:0;background:var(--accent)}.node{margin:0 14px 12px;padding:12px;border:1px solid #263750;border-radius:10px;background:#0e1828}.node-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.node-name{font-weight:600}.pill{white-space:nowrap;border:1px solid #3c4b62;color:#c5d3e6;border-radius:30px;padding:2px 8px;font-size:11px}.children{margin:10px 0 0 0;padding-right:18px;border-right:1px solid #33465f;display:grid;gap:9px}.child{padding:10px;border-radius:8px;background:#111f33;border:1px solid #273a54}.child .children{margin-top:8px}.empty{padding:20px;color:var(--muted);text-align:center}.foot{color:var(--muted);font-size:12px;margin-top:18px}.error{color:#ff9b9b}.hidden{display:none!important}
+@media(max-width:800px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.levels{grid-template-columns:repeat(2,minmax(0,1fr))}.node-head{flex-direction:column}.domain>summary{align-items:flex-start;flex-direction:column}}
+</style></head>
+<body>
+<header><h1>داشبورد گانت چارت ERP</h1><p class="subtitle">برنامه‌ریزی چهارسطحی منابع سازمان · منبع داده: <code>erp-project.json</code></p></header>
+<main><section class="stats">
+<div class="card"><div class="label">حوزه‌های سازمانی · سطح ۱</div><div class="value" id="s1">—</div></div>
+<div class="card"><div class="label">ماژول‌ها · سطح ۲</div><div class="value" id="s2">—</div></div>
+<div class="card"><div class="label">فرایندها · سطح ۳</div><div class="value" id="s3">—</div></div>
+<div class="card"><div class="label">فعالیت‌ها · سطح ۴</div><div class="value" id="s4">—</div></div>
+</section>
+<section class="panel"><div class="node-head"><div><strong>پیشرفت کل پروژه</strong><div class="meta" id="projectName">در حال خواندن منبع داده…</div></div><span class="pill" id="overall">۰٪</span></div><div class="bar"><i id="overallBar"></i></div>
+<div class="levels">
+<div class="level"><b>سطح ۱ · حوزه سازمانی</b><span id="l1">۰٪ پیشرفت</span><div class="bar"><i></i></div></div>
+<div class="level"><b>سطح ۲ · ماژول</b><span id="l2">۰٪ پیشرفت</span><div class="bar"><i></i></div></div>
+<div class="level"><b>سطح ۳ · فرایند</b><span id="l3">۰٪ پیشرفت</span><div class="bar"><i></i></div></div>
+<div class="level"><b>سطح ۴ · فعالیت</b><span id="l4">۰٪ پیشرفت</span><div class="bar"><i></i></div></div>
+</div>
+<div class="toolbar"><input id="search" type="search" placeholder="جست‌وجو در حوزه، ماژول یا فعالیت…"><select id="levelFilter"><option value="all">همه سطوح</option><option value="1">فقط سطح ۱</option><option value="2">سطح ۲ و بالاتر</option><option value="3">سطح ۳ و بالاتر</option><option value="4">سطح ۴ و بالاتر</option></select><select id="statusFilter"><option value="all">همه وضعیت‌ها</option><option value="not_started">شروع‌نشده</option><option value="in_progress">در حال اجرا</option><option value="blocked">مسدود</option><option value="completed">تکمیل‌شده</option></select><button id="expand" class="toolbar input" style="cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#17253a;color:var(--text)">باز کردن همه</button></div>
+<div id="tree" class="tree"><div class="empty">در حال بارگذاری…</div></div><p id="message" class="foot">درصدها از فایل JSON خوانده می‌شوند؛ مقدار اولیه همه سطوح صفر است.</p></section></main>
+<script>
+const fa=n=>new Intl.NumberFormat('fa-IR',{maximumFractionDigits:1}).format(n);
+let project=null, expanded=false;
+function flatten(nodes,out=[]){for(const n of nodes||[]){out.push(n);flatten(n.children,out)}return out}
+function pct(n){return Number.isFinite(Number(n.progress_percent))?Math.max(0,Math.min(100,Number(n.progress_percent))):0}
+function nodeHTML(n,level){const kids=n.children||[];const cls=level===2?'node': 'child';return '<div class="'+cls+'" data-level="'+level+'" data-status="'+esc(n.status||'not_started')+'" data-search="'+esc((n.name+' '+n.id).toLowerCase())+'"><div class="node-head"><div><div class="node-name">'+esc(n.name)+'</div><div class="meta">'+esc(n.id)+' · سطح '+fa(level)+' · '+statusName(n.status)+'</div></div><span class="pill">'+fa(pct(n))+'٪</span></div><div class="bar"><i style="width:'+pct(n)+'%"></i></div>'+(kids.length?'<div class="children">'+kids.map(k=>nodeHTML(k,level+1)).join('')+'</div>':'')+'</div>'}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function statusName(s){return ({not_started:'شروع‌نشده',in_progress:'در حال اجرا',blocked:'مسدود',completed:'تکمیل‌شده'})[s]||s||'تعریف‌نشده'}
+function render(){const tree=document.getElementById('tree');const q=document.getElementById('search').value.trim().toLowerCase();const lv=document.getElementById('levelFilter').value;const st=document.getElementById('statusFilter').value;
+let visible=0;tree.innerHTML=(project.resources||[]).map(d=>{const all=flatten([d]);const match=all.some(n=>(n.name+' '+n.id).toLowerCase().includes(q)&&(st==='all'||n.status===st)&&(lv==='all'||Number(lv)<=Number(n.level)));if(!match)return '';visible++;return '<details class="domain" '+(expanded||q?'open':'')+' data-domain="'+esc(d.id)+'"><summary><span><span class="summary-title">'+esc(d.name)+'</span><div class="meta">'+esc(d.id)+' · '+fa(all.length-1)+' مورد زیرمجموعه</div></span><span style="min-width:120px"><span class="pill">'+fa(pct(d))+'٪</span><div class="bar"><i style="width:'+pct(d)+'%"></i></div></span></summary>'+ (d.children||[]).map(n=>nodeHTML(n,2)).join('')+'</details>'}).join('');
+if(!visible)tree.innerHTML='<div class="empty">موردی مطابق فیلترها پیدا نشد.</div>';
+tree.querySelectorAll('.domain').forEach(el=>{if(lv!=='all'||st!=='all'||q)el.open=true});
+}
+async function init(){try{const res=await fetch('./erp-project.json',{cache:'no-store'});if(!res.ok)throw new Error('HTTP '+res.status);project=await res.json();const all=flatten(project.resources||[]);document.getElementById('s1').textContent=fa((project.resources||[]).length);document.getElementById('s2').textContent=fa(all.filter(n=>n.level===2).length);document.getElementById('s3').textContent=fa(all.filter(n=>n.level===3).length);document.getElementById('s4').textContent=fa(all.filter(n=>n.level===4).length);document.getElementById('projectName').textContent=project.project.name;document.getElementById('overall').textContent=fa(pct({progress_percent:project.summary?.progress_percent??0}))+'٪';document.getElementById('overallBar').style.width=pct({progress_percent:project.summary?.progress_percent??0})+'%';for(let l=1;l<=4;l++){const ns=all.filter(n=>n.level===l);const avg=ns.length?ns.reduce((a,n)=>a+pct(n),0)/ns.length:0;document.getElementById('l'+l).textContent=fa(avg)+'٪ پیشرفت';document.querySelectorAll('.level .bar i')[l-1].style.width=avg+'%'}render()}catch(e){document.getElementById('tree').innerHTML='<div class="empty error">بارگذاری فایل erp-project.json ناموفق بود. فایل باید در کنار Gonchar.html در شاخه منتشرشده قرار داشته باشد. ('+esc(e.message)+')</div>';document.getElementById('message').textContent='خطا در دریافت منبع داده.'}}
+['search','levelFilter','statusFilter'].forEach(id=>document.getElementById(id).addEventListener(id==='search'?'input':'change',render));
+document.getElementById('expand').addEventListener('click',()=>{expanded=!expanded;document.getElementById('expand').textContent=expanded?'بستن همه':'باز کردن همه';document.querySelectorAll('.domain').forEach(d=>d.open=expanded)});
+init();
+</script></body></html>
