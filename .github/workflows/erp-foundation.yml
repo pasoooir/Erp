@@ -45,5 +45,5 @@ jobs:
         env:
           BOOTSTRAP_SECRET: ci-only-bootstrap-secret-for-local-runtime
         run: |
-          printf 'BOOTSTRAP_SECRET=%s\\n' "$BOOTSTRAP_SECRET" > .dev.vars
+          printf 'BOOTSTRAP_SECRET=%s\n' "$BOOTSTRAP_SECRET" > .dev.vars
           node tests/worker-runtime-smoke.mjs
