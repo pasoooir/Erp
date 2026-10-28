@@ -2,12 +2,6 @@ name: Cloudflare connectivity smoke test
 
 on:
   workflow_dispatch:
-    inputs:
-      database_id:
-        description: "D1 database UUID to test (defaults to the dedicated connectivity test database)"
-        required: true
-        type: string
-        default: "a8d8240e-190f-491f-a009-9cc47a085f90"
 
 permissions:
   contents: read
@@ -21,7 +15,7 @@ jobs:
         env:
           CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          D1_DATABASE_ID: ${{ inputs.database_id }}
+          D1_DATABASE_ID: a8d8240e-190f-491f-a009-9cc47a085f90
         run: |
           set -euo pipefail
           test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing repository variable CLOUDFLARE_ACCOUNT_ID"; exit 1; }
