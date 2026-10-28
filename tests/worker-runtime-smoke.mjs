@@ -108,6 +108,7 @@ try {
   await page.locator("#userForm button[type=submit]").click();
   try { await page.locator("#usersTable tr").filter({hasText:"manager@example.com"}).waitFor({timeout:8000}); }
   catch { throw new Error("Scoped user creation failed in UI: "+await page.locator("#notice").textContent()); }
+  await page.locator("#usersTable tr").filter({hasText:"manager@example.com"}).getByText(/ACME/).waitFor();
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"mobile page should not overflow horizontally");
   assert.deepEqual(pageErrors,[]);
