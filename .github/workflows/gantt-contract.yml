@@ -4,12 +4,16 @@ on:
     branches: [main]
     paths:
       - "erp-project.json"
+      - "Gonchar.html"
       - "scripts/gantt.mjs"
+      - "scripts/check-gantt-dashboard.mjs"
       - ".github/workflows/gantt-contract.yml"
   pull_request:
     paths:
       - "erp-project.json"
+      - "Gonchar.html"
       - "scripts/gantt.mjs"
+      - "scripts/check-gantt-dashboard.mjs"
       - ".github/workflows/gantt-contract.yml"
   workflow_dispatch:
 permissions:
@@ -26,3 +30,5 @@ jobs:
           node-version: "22"
       - name: Validate Gantt JSON contract
         run: node scripts/gantt.mjs --check
+      - name: Check dashboard JavaScript syntax
+        run: node scripts/check-gantt-dashboard.mjs
