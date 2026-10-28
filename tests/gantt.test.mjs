@@ -97,3 +97,26 @@ test("rejects dependency cycles", () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /dependency cycle/);
 });
+test("sync does not fill untouched branches with synthetic zero progress", () => {
+  const data = fixture();
+  const untouched = {
+    id: "U2", name: "Untouched level 2", level: 2, children: [{
+      id: "U3", name: "Untouched level 3", level: 3, children: [{
+        id: "U4", name: "Untouched level 4", level: 4, acceptance_criteria: ["criterion"], children: [{
+          id: "U5", name: "Untouched level 5", level: 5, children: [
+            { id: "U6", name: "Untouched leaf", level: 6 }
+          ]
+        }]
+      }]
+    }]
+  };
+  data.resources[0].children.push(untouched);
+  const result = run(data, ["--sync-summary"]);
+  assert.equal(result.status, 0, result.stderr);
+  const after = JSON.parse(result.content);
+  const untouchedAfter = after.resources[0].children[1];
+  assert.equal(untouchedAfter.status, undefined);
+  assert.equal(untouchedAfter.progress_percent, undefined);
+  assert.equal(after.resources[0].status, "in_progress");
+  assert.equal(after.resources[0].progress_percent, 12.5);
+});
