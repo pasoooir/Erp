@@ -20,16 +20,15 @@ The table was created and a parameterized SELECT returned the expected marker. T
 A repository owner must add the following settings in **GitHub → pasoooir/Erp → Settings → Secrets and variables → Actions**:
 
 1. Add repository variable `CLOUDFLARE_ACCOUNT_ID` with the account ID from Cloudflare. The currently connected account ID is `375ca865a8f1a55b88293afdf286d2fe`.
-2. Add repository secret `CLOUDFLARE_API_TOKEN` containing a newly created, narrowly scoped Cloudflare API token.
+2. Add repository secret `CLOUDFLARE_API_TOKEN` containing the Cloudflare API token created by the repository owner.
 
-Recommended token policy:
-- Scope: only the relevant Cloudflare account.
-- Permission: D1 Edit (required for the query endpoint; this workflow itself only lists databases and performs SELECT).
-- Expiry: short-lived during setup (for example, 30 days), then rotate/review.
-- Do not use the Global API Key or a broad account-wide token.
-- Never commit the token to a file, issue, workflow YAML, or log. GitHub secret values are write-only after saving.
+Token configuration reported by the repository owner:
+- A custom Cloudflare API token with broad access intended to manage the ERP's Cloudflare resources has been created and stored as the GitHub secret above.
+- The exact permission groups and their effective API access have not yet been independently verified by this workflow.
+- Do not use the Global API Key. Never commit the token to a file, issue, workflow YAML, or log. GitHub secret values are write-only after saving.
+- Keep the token value private and avoid exposing it to workflows that execute untrusted code. Broad credentials increase the impact of a compromised workflow; use protected branches/environments and separate test/production controls.
 
-Create the token in the Cloudflare dashboard under **My Profile → API Tokens → Create Token**, selecting a custom token with only the required account-level D1 permission. Confirm the account scope and expiry before saving it. Do not paste the token into ChatGPT messages.
+Do not paste the token into ChatGPT messages.
 
 ## Run the smoke test
 
