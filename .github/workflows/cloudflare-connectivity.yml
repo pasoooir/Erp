@@ -61,6 +61,45 @@ jobs:
           echo "Cloudflare API authentication, D1 access, and read-only SQL smoke test passed."
           unset CF_API_TOKEN
 
+      - name: Verify read-only access to Workers, Pages and KV
+        env:
+          CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || '375ca865a8f1a55b88293afdf286d2fe' }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          for item in "workers/scripts|Workers scripts" "pages/projects|Pages projects" "storage/kv/namespaces?per_page=100|KV namespaces"; do
+            endpoint="${item%%|*}"
+            label="${item#*|}"
+            response="$(curl --fail-with-body --silent --show-error \
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/$endpoint")"
+            echo "$response" | jq -e '.success == true' >/dev/null
+            count="$(echo "$response" | jq '.result | length')"
+            echo "Read-only access verified: $label (count=$count)"
+          done
+          unset CF_API_TOKEN
+
+      - name: Check R2 availability without creating resources
+        env:
+          CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || '375ca865a8f1a55b88293afdf286d2fe' }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          code="$(curl --silent --show-error -o /tmp/r2-response.json -w '%{http_code}' \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/r2/buckets?per_page=100")"
+          if [[ "$code" == "200" ]]; then
+            jq -e '.success == true' /tmp/r2-response.json >/dev/null
+            echo "R2 API available; bucket count=$(jq '.result | length' /tmp/r2-response.json)"
+          elif [[ "$code" == "403" ]]; then
+            echo "::warning::R2 API returned 403. It may require activation in the Cloudflare Dashboard or a permission check; no resource was created."
+          else
+            echo "::error::Unexpected R2 API HTTP status: $code"
+            jq -r '.errors[]?.message // empty' /tmp/r2-response.json
+            exit 1
+          fi
+          unset CF_API_TOKEN
+
       - name: Require repository account variable
         env:
           CF_ACCOUNT_ID_CONFIGURED: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
