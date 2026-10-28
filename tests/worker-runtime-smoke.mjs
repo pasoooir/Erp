@@ -106,7 +106,8 @@ try {
   assert.ok(scopeOption,"Company A should be selectable as a user scope");
   await page.locator('#userForm select[name="scope_ids"]').selectOption(scopeOption.value);
   await page.locator("#userForm button[type=submit]").click();
-  await page.locator("#usersTable tr").filter({hasText:"manager@example.com"}).waitFor();
+  try { await page.locator("#usersTable tr").filter({hasText:"manager@example.com"}).waitFor({timeout:8000}); }
+  catch { throw new Error("Scoped user creation failed in UI: "+await page.locator("#notice").textContent()); }
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"mobile page should not overflow horizontally");
   assert.deepEqual(pageErrors,[]);
