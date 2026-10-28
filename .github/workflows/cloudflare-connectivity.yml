@@ -17,18 +17,22 @@ jobs:
     steps:
       - name: Validate required configuration
         env:
-          CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || '375ca865a8f1a55b88293afdf286d2fe' }}
+          CF_ACCOUNT_ID_CONFIGURED: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           D1_DATABASE_ID: a8d8240e-190f-491f-a009-9cc47a085f90
         run: |
           set -euo pipefail
-          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing repository variable CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing Cloudflare account ID"; exit 1; }
           test -n "$CF_API_TOKEN" || { echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$D1_DATABASE_ID" || { echo "::error::Missing D1 database UUID"; exit 1; }
+          if [[ "$CF_ACCOUNT_ID_CONFIGURED" != "true" ]]; then
+            echo "::warning::Repository variable CLOUDFLARE_ACCOUNT_ID is missing; using the verified account ID only to diagnose the token. The final check will still fail."
+          fi
 
       - name: Verify token can list D1 databases
         env:
-          CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || '375ca865a8f1a55b88293afdf286d2fe' }}
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
@@ -41,7 +45,7 @@ jobs:
 
       - name: Read back the dedicated connectivity probe
         env:
-          CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || '375ca865a8f1a55b88293afdf286d2fe' }}
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           D1_DATABASE_ID: a8d8240e-190f-491f-a009-9cc47a085f90
         run: |
@@ -56,3 +60,12 @@ jobs:
           echo "$response" | jq -e '.success == true and .result[0].success == true and .result[0].results[0].probe == "github-cloudflare-api-ok"' >/dev/null
           echo "Cloudflare API authentication, D1 access, and read-only SQL smoke test passed."
           unset CF_API_TOKEN
+
+      - name: Require repository account variable
+        env:
+          CF_ACCOUNT_ID_CONFIGURED: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [[ "$CF_ACCOUNT_ID_CONFIGURED" != "true" ]]; then
+            echo "::error::Set repository variable CLOUDFLARE_ACCOUNT_ID; credential diagnostic used a fallback and is not configuration-complete."
+            exit 1
+          fi
