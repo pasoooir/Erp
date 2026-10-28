@@ -45,7 +45,7 @@ try {
   await page.goto(base+"/");
   await page.locator("#bootstrapForm").waitFor({state:"visible"});
   await page.locator('input[name="bootstrap_secret"]').fill(secret);
-  await page.locator('input[name="display_name"]').fill("مدیر آزمایش");
+  await page.locator('#bootstrapForm input[name="display_name"]').fill("مدیر آزمایش");
   await page.locator('#bootstrapForm input[name="email"]').fill("admin@example.com");
   await page.locator('#bootstrapForm input[name="password"]').fill(password);
   await page.locator("#bootstrapForm button[type=submit]").click();
