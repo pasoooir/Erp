@@ -101,3 +101,46 @@
 7. چه چیزی باقی مانده یا مسدود است؟
 
 **هدف، تولید بیشترین کد یا بیشترین تعداد وظیفه نیست؛ هدف، تحویل قابلیت‌های واقعی، یکپارچه، امن، آزموده‌شده و قابل ردیابی است.**
+
+
+## ۹. اتصال GitHub Actions به Cloudflare
+
+مالک پروژه اعلام کرده است که تنظیمات اتصال Cloudflare در تنظیمات مخزن GitHub ایجاد شده‌اند. این بخش نام و هدف تنظیمات را ثبت می‌کند؛ مقدار Secretها عمداً در مخزن مستند نمی‌شود.
+
+### تنظیمات موردنیاز مخزن
+
+مسیر تنظیمات: **GitHub → Settings → Secrets and variables → Actions**
+
+| نوع | نام | کاربرد |
+|---|---|---|
+| Repository Variable | `CLOUDFLARE_ACCOUNT_ID` | شناسه حساب Cloudflare هدف برای API و ابزارهای استقرار |
+| Repository Secret | `CLOUDFLARE_API_TOKEN` | توکن API محرمانه Cloudflare برای Workflowهای مجاز |
+
+**وضعیت پیکربندی:** طبق اعلام مالک، توکن Cloudflare با دسترسی گسترده برای مدیریت منابع موردنیاز ERP ساخته و در GitHub ذخیره شده است. مقدار توکن، مقدار Secret و هیچ اعتبارنامه‌ای نباید در README، کد، commit، issue، log یا خروجی آزمون درج شود.
+
+**وضعیت راستی‌آزمایی فعلی:** در [اجرای GitHub Actions شماره 40712132595](https://github.com/pasoooir/Erp/actions/runs/40712132595)، Secret `CLOUDFLARE_API_TOKEN` معتبر بود: فهرست D1، SELECT روی marker و UPDATE بدون تغییر مقدار موفق شدند؛ فهرست Workers Scripts، Pages projects و KV namespaces نیز با HTTP موفق خوانده شد (هر سه خالی‌اند). R2 با HTTP 403 پاسخ داد و در این آزمون هیچ bucket ساخته نشد. این شواهد دسترسی عملیات آزموده‌شده را ثابت می‌کند، نه تمام مجوزهای write یا دسترسی کامل همه سرویس‌ها.
+
+**مانع پیکربندی:** Workflow مقدار `CLOUDFLARE_ACCOUNT_ID` را از `vars.CLOUDFLARE_ACCOUNT_ID` خالی دریافت می‌کند. شناسه تأییدشده فقط برای تشخیص Token استفاده شده و Workflow عمداً non-green می‌ماند تا Variable در سطح همین Repository و مسیر Settings → Secrets and variables → Actions → Variables ثبت/اصلاح شود.
+
+### محدودهٔ هدف اتوماسیون
+
+Workflowها باید در محدودهٔ مجوزهای واقعاً اعطاشده و قابلیت‌های پلن Cloudflare بتوانند این کارها را انجام دهند:
+
+- فهرست‌کردن و مدیریت دیتابیس‌های D1 و اجرای SQL و migrationهای کنترل‌شده؛
+- مدیریت تنظیمات و bindingهای Worker و آماده‌سازی/استقرار Worker؛
+- مدیریت پروژه‌های Cloudflare Pages در صورت پیکربندی و پشتیبانی حساب؛
+- اجرای بررسی‌های اتصال، اعتبارسنجی تنظیمات، آزمون‌های مهاجرت و تست‌های یکپارچگی؛
+- گزارش دقیق خطاهای مجوز، سرویس یا محدودیت پلن، بدون افشای توکن یا داده حساس.
+
+قابلیت‌های KV، R2، Queues، Vectorize، Durable Objects و دیگر سرویس‌ها فقط در صورت نیاز واقعی پروژه، پشتیبانی پلن و وجود مجوز قابل استفاده‌اند؛ ساختن توکن با دسترسی گسترده، سرویس پولی یا قابلیتی را که در پلن فعال نیست فعال نمی‌کند.
+
+### الزامات امنیتی و عملیاتی
+
+- Secret فقط در زمان اجرای Workflowهای مورداعتماد و تا حد نیاز در دسترس باشد؛ آن را در workflowهای اجراشونده از fork یا کد غیرقابل‌اعتماد افشا نکن.
+- مقدار `CLOUDFLARE_ACCOUNT_ID` شناسه حساب است، نه Secret؛ مقدار واقعی توکن فقط در `CLOUDFLARE_API_TOKEN` نگهداری شود.
+- توکن نباید در خروجی فرمان‌ها، logها، artefactها یا گزارش خطا چاپ شود.
+- عملیات توسعه و آزمون را از Production جدا نگه دار.
+- پیش از انتشار Production، migration زنده یا تغییر مخرب روی داده‌های واقعی، تأیید صریح مالک پروژه لازم است.
+- اگر API خطای مجوز برگرداند، Workflow باید endpoint و permission لازم را بدون نمایش credential گزارش کند؛ دسترسی را صرفاً از روی نام توکن یا تنظیمات ادعاشده فرض نکند.
+
+راهنمای رسمی: [Cloudflare API token permissions](https://developers.cloudflare.com/fundamentals/api/reference/permissions/)، [Cloudflare Account API tokens](https://developers.cloudflare.com/fundamentals/api/get-started/account-owned-tokens/) و [GitHub Actions secrets](https://docs.github.com/en/actions/concepts/security/secrets).
