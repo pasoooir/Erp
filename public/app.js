@@ -27,6 +27,9 @@
     currentUser=user;$("authPanel").classList.add("hidden");$("appPanel").classList.remove("hidden");$("logoutButton").classList.remove("hidden");
     $("welcomeTitle").textContent="سلام، "+user.display_name;$("welcomeText").textContent="نقش‌ها: "+user.roles.map(role=>roleLabels[role]||role).join("، ");
     const isAdmin=user.roles.includes("admin"),canManage=isAdmin||user.roles.includes("org_manager");
+    const companyOption=Array.from(forms.unit.elements.unit_type.options).find(option=>option.value==="company");
+    if(companyOption){companyOption.disabled=!isAdmin;companyOption.hidden=!isAdmin;}
+    if(!isAdmin&&forms.unit.elements.unit_type.value==="company")forms.unit.elements.unit_type.value="site";
     $("createPanel").classList.toggle("hidden",!canManage);
     $("editPanel").classList.toggle("hidden",!canManage||!forms.edit.elements.id.value);
     $("usersPanel").classList.toggle("hidden",!isAdmin);
