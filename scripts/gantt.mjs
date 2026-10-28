@@ -91,6 +91,21 @@ for (const item of dependencies) {
     if (dep === item.id) errors.push(`${item.id}: node cannot depend on itself`);
   }
 }
+const dependencyGraph = new Map(dependencies.map(item => [item.id, item.values.filter(dep => ids.has(dep))]));
+const visiting = new Set();
+const visited = new Set();
+function visitDependency(id, trail = []) {
+  if (visiting.has(id)) {
+    errors.push(`dependency cycle: ${[...trail, id].join(" -> ")}`);
+    return;
+  }
+  if (visited.has(id)) return;
+  visiting.add(id);
+  for (const dep of dependencyGraph.get(id) || []) visitDependency(dep, [...trail, id]);
+  visiting.delete(id);
+  visited.add(id);
+}
+for (const item of dependencies) visitDependency(item.id);
 const expectedCounts = { level1_count: counts[1], level2_count: counts[2], level3_count: counts[3],
   level4_count: counts[4], level5_count: counts[5], level6_count: counts[6] };
 if (check) {
