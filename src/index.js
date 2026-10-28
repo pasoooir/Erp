@@ -272,9 +272,13 @@ async function createUser(request, env, actor) {
 async function setUserStatus(env, actor, id, nextStatus) {
   if(!actor.roles.includes("admin"))return fail(403,"forbidden","فقط مدیر سامانه می‌تواند وضعیت کاربران را تغییر دهد.");
   if(id===actor.id&&nextStatus==="disabled")return fail(409,"cannot_disable_self","مدیر واردشده نمی‌تواند حساب خودش را غیرفعال کند.");
-  const existing=await env.DB.prepare("SELECT id,email,status FROM users WHERE id=?").bind(id).first();
+  const existing=await env.DB.prepare("SELECT id,email,status,EXISTS(SELECT 1 FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE ur.user_id=users.id AND r.name='admin') AS is_admin FROM users WHERE id=?").bind(id).first();
   if(!existing)return fail(404,"user_not_found","کاربر پیدا نشد.");
   if(existing.status===nextStatus)return json({data:await safeUser(env,id),meta:{changed:false}});
+  if(nextStatus==="disabled"&&existing.is_admin){
+    const count=await env.DB.prepare("SELECT COUNT(DISTINCT u.id) AS count FROM users u JOIN user_roles ur ON ur.user_id=u.id JOIN roles r ON r.id=ur.role_id WHERE u.status='active' AND r.name='admin'").first();
+    if(Number(count?.count||0)<=1)return fail(409,"last_admin","آخرین مدیر فعال سامانه را نمی‌توان غیرفعال کرد.");
+  }
   try{
     const statements=[
       env.DB.prepare("UPDATE users SET status=? WHERE id=? AND status=?").bind(nextStatus,id,existing.status),
