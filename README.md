@@ -118,7 +118,7 @@
 
 **وضعیت پیکربندی:** طبق اعلام مالک، توکن Cloudflare با دسترسی گسترده برای مدیریت منابع موردنیاز ERP ساخته و در GitHub ذخیره شده است. مقدار توکن، مقدار Secret و هیچ اعتبارنامه‌ای نباید در README، کد، commit، issue، log یا خروجی آزمون درج شود.
 
-**وضعیت راستی‌آزمایی فعلی:** در [اجرای GitHub Actions شماره 40711713853](https://github.com/pasoooir/Erp/actions/runs/40711713853)، Secret `CLOUDFLARE_API_TOKEN` معتبر بود: فهرست D1، SELECT روی marker و UPDATE بدون تغییر مقدار موفق شدند؛ فهرست Workers Scripts، Pages projects و KV namespaces نیز با HTTP موفق خوانده شد (هر سه خالی‌اند). R2 با HTTP 403 پاسخ داد و در این آزمون هیچ bucket ساخته نشد. این شواهد دسترسی عملیات آزموده‌شده را ثابت می‌کند، نه تمام مجوزهای write یا دسترسی کامل همه سرویس‌ها.
+**وضعیت راستی‌آزمایی فعلی:** در [اجرای GitHub Actions شماره 40712132595](https://github.com/pasoooir/Erp/actions/runs/40712132595)، Secret `CLOUDFLARE_API_TOKEN` معتبر بود: فهرست D1، SELECT روی marker و UPDATE بدون تغییر مقدار موفق شدند؛ فهرست Workers Scripts، Pages projects و KV namespaces نیز با HTTP موفق خوانده شد (هر سه خالی‌اند). R2 با HTTP 403 پاسخ داد و در این آزمون هیچ bucket ساخته نشد. این شواهد دسترسی عملیات آزموده‌شده را ثابت می‌کند، نه تمام مجوزهای write یا دسترسی کامل همه سرویس‌ها.
 
 **مانع پیکربندی:** Workflow مقدار `CLOUDFLARE_ACCOUNT_ID` را از `vars.CLOUDFLARE_ACCOUNT_ID` خالی دریافت می‌کند. شناسه تأییدشده فقط برای تشخیص Token استفاده شده و Workflow عمداً non-green می‌ماند تا Variable در سطح همین Repository و مسیر Settings → Secrets and variables → Actions → Variables ثبت/اصلاح شود.
 
