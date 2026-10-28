@@ -283,7 +283,7 @@ async function setUserStatus(env, actor, id, nextStatus) {
     const statements=[
       env.DB.prepare("UPDATE users SET status=? WHERE id=? AND status=?").bind(nextStatus,id,existing.status),
       env.DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json) SELECT ?, ?, ?, 'user', ?, ? WHERE changes()>0")
-        .bind(crypto.randomUUID(),actor.id,nextStatus==="disabled"?"user.deactivated":"user.activated",id,JSON.stringify({email:existing.email,previous_status:existing.status,status:nextStatus}))
+        .bind(crypto.randomUUID(),actor.id,nextStatus==="disabled"?"user.deactivated":"user.activated",id,JSON.stringify({previous_status:existing.status,status:nextStatus}))
     ];
     if(nextStatus==="disabled")statements.push(env.DB.prepare("UPDATE sessions SET revoked_at=CURRENT_TIMESTAMP WHERE user_id=? AND revoked_at IS NULL").bind(id));
     const results=await env.DB.batch(statements);
