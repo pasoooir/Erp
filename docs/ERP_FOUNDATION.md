@@ -29,7 +29,7 @@
 - login: `POST /api/v1/auth/login` با `email` و `password`; نشست از طریق Cookie امن بازگردانده می‌شود.
 - logout: `POST /api/v1/auth/logout`; نشست revoke و رویداد ممیزی ثبت می‌شود.
 - هویت فعلی: `GET /api/v1/auth/me`.
-- فهرست واحدها: `GET /api/v1/org-units` (نیازمند نشست).
+- فهرست واحدها: `GET /api/v1/org-units` (نیازمند نشست معتبر و نقش admin). تا زمان تکمیل scope-based RBAC، تمام دسترسی‌های ساختار سازمانی به مدیر محدود شده‌اند؛ این رفتار deny-by-default از افشای داده به نقش‌های آینده جلوگیری می‌کند.
 - ایجاد واحد: `POST /api/v1/org-units` (فقط نقش admin)، با `code`، `name`، `unit_type` و `parent_id` اختیاری برای شرکت.
 - ویرایش واحد: `PATCH /api/v1/org-units/{id}` (فقط admin)، فقط `name` و `parent_id`؛ کد/نوع immutable هستند، چرخه والد با recursive CTE رد می‌شود و audit event ثبت می‌گردد.
 - غیرفعال‌سازی/فعال‌سازی: `POST /api/v1/org-units/{id}/deactivate` و `/activate` (فقط admin). والد با فرزند فعال غیرفعال نمی‌شود؛ فعال‌سازی فرزند نیز به والد فعال نیاز دارد.
