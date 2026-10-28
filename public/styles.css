@@ -1,263 +1,219 @@
-:root {
-  --bg: #f3f7fb;
-  --panel: #ffffff;
-  --panel-alt: #eef5ff;
-  --primary: #174ea6;
-  --primary-dark: #0f387a;
-  --success: #15803d;
-  --warning: #a16207;
-  --danger: #b91c1c;
-  --text: #172033;
-  --muted: #59667a;
-  --border: #dfe7f2;
-  --shadow: 0 10px 24px rgba(15, 56, 122, 0.08);
-}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CarTech ERP</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="authView" class="auth-shell">
+      <div class="login-box">
+        <div class="brand-mark">CT</div>
+        <h1>CarTech ERP</h1>
+        <p>سامانه یکپارچه مدیریت کارخانه، انبار، فروش و مالی</p>
+        <form id="loginForm">
+          <label>
+            ایمیل
+            <input type="email" id="email" value="admin@cartech.ir" required />
+          </label>
+          <label>
+            رمز عبور
+            <input type="password" id="password" value="admin123" required />
+          </label>
+          <button type="submit">ورود به سیستم</button>
+        </form>
+        <div id="loginError" class="error hidden"></div>
+      </div>
+    </div>
 
-* {
-  box-sizing: border-box;
-}
+    <div id="appView" class="hidden app-shell">
+      <aside class="sidebar">
+        <div class="brand-block">
+          <div class="brand-mark">CT</div>
+          <div>
+            <h3>CarTech ERP</h3>
+            <small>Factory Suite</small>
+          </div>
+        </div>
 
-html, body {
-  margin: 0;
-  font-family: Tahoma, Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  direction: rtl;
-}
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-view="dashboard">داشبورد</button>
+          <button class="nav-item" data-view="organizations">سازمان</button>
+          <button class="nav-item" data-view="users">کاربران</button>
+          <button class="nav-item" data-view="products">محصولات</button>
+          <button class="nav-item" data-view="warehouse">انبار</button>
+          <button class="nav-item" data-view="purchases">خرید</button>
+          <button class="nav-item" data-view="sales">فروش</button>
+          <button class="nav-item" data-view="finance">حسابداری</button>
+          <button class="nav-item" data-view="audit">ممیزی</button>
+        </nav>
 
-body {
-  min-height: 100vh;
-}
+        <div class="sidebar-footer">
+          <span>نسخه MVP</span>
+          <strong id="userBadge">کاربر</strong>
+          <button id="logoutBtn" class="ghost-btn">خروج</button>
+        </div>
+      </aside>
 
-.hidden {
-  display: none !important;
-}
+      <div class="main-panel">
+        <header class="topbar">
+          <div class="topbar-title">
+            <h2>داشبورد مدیریت</h2>
+            <span id="todayStamp">—</span>
+          </div>
+          <div class="topbar-actions">
+            <div class="search-box">
+              <span>🔎</span>
+              <input type="text" readonly value="جستجو در سیستم" />
+            </div>
+          </div>
+        </header>
 
-.auth-shell {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, #e9f2ff 0%, #f8fbff 100%);
-}
+        <main class="workspace">
+          <section id="dashboardView" class="page active">
+            <div class="page-header">
+              <div>
+                <p class="eyebrow">نمای کلی</p>
+                <h3>داشبورد عملیاتی</h3>
+              </div>
+            </div>
 
-.login-box {
-  width: min(420px, 92vw);
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  box-shadow: var(--shadow);
-  padding: 2rem;
-}
+            <div id="summaryCards" class="cards"></div>
 
-.login-box h1 {
-  margin: 0 0 0.5rem;
-  color: var(--primary);
-}
+            <div class="panel-grid">
+              <div class="panel">
+                <div class="panel-header">
+                  <h3>فعالیت اخیر</h3>
+                </div>
+                <div id="activityList" class="list-wrap"></div>
+              </div>
 
-.login-box p {
-  margin: 0 0 1.5rem;
-  color: var(--muted);
-}
+              <div class="panel">
+                <div class="panel-header">
+                  <h3>موجودی کم</h3>
+                </div>
+                <div id="lowStockList" class="list-wrap"></div>
+              </div>
+            </div>
+          </section>
 
-#loginForm {
-  display: grid;
-  gap: 1rem;
-}
+          <section id="organizationsView" class="page hidden">
+            <div class="page-header">
+              <div>
+                <p class="eyebrow">مدیریت</p>
+                <h3>سازمان‌ها</h3>
+              </div>
+              <button id="addOrgBtn" class="primary-btn">+ افزودن سازمان</button>
+            </div>
+            <div id="organizationsTable" class="table-wrap"></div>
+          </section>
 
-#loginForm label {
-  display: grid;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
+          <section id="usersView" class="page hidden">
+            <div class="page-header">
+              <div>
+                <p class="eyebrow">کاربران</p>
+                <h3>لیست کاربران</h3>
+              </div>
+              <button id="addUserBtn" class="primary-btn">+ کاربر جدید</button>
+            </div>
+            <div id="usersTable" class="table-wrap"></div>
+          </section>
 
-#loginForm input {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.8rem 0.9rem;
-  font-size: 1rem;
-}
+          <section id="productsView" class="page hidden">
+            <div class="page-header">
+              <div>
+                <p class="eyebrow">محصولات</p>
+                <h3>کاتالوگ کالا</h3>
+              </div>
+              <button id="addProductBtn" class="primary-btn">+ محصول جدید</button>
+            </div>
+            <div id="productsTable" class="table-wrap"></div>
+          </section>
 
-button {
-  border: none;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
+          <section id="warehouseView" class="page hidden">
+            <div class="page-header">
+              <div>
+                <p class="eyebrow">انبار</p>
+                <h3>موجودی و نقل‌وانتقال</h3>
+              </div>
+              <button id="adjustStockBtn" class="primary-btn">+ تنظیم موجودی</button>
+            </div>
+            <div id="warehouseTable" class="table-wrap"></div>
+          </section>
 
-button:hover {
-  transform: translateY(-1px);
-}
+          <section id="purchasesView" class="page hidden">
+            <div class="page-header">
+              <div>
+                <p class="eyebrow">خرید</p>
+                <h3>سفارش‌های خرید</h3>
+              </div>
+              <button id="addPurchaseBtn" class="primary-btn">+ سفارش خرید</button>
+            </div>
+            <div id="purchaseOrdersTable" class="table-wrap"></div>
+          </section>
 
-#loginForm button,
-.primary-btn,
-#logoutBtn {
-  background: var(--primary);
-  color: white;
-  padding: 0.8rem 1rem;
-}
+          <section id="salesView" class="page hidden">
+            <div class="page-header">
+              <div>
+                <p class="eyebrow">فروش</p>
+                <h3>سفارش‌های فروش</h3>
+              </div>
+              <button id="addSalesBtn" class="primary-btn">+ سفارش فروش</button>
+            </div>
+            <div id="salesOrdersTable" class="table-wrap"></div>
+          </section>
 
-.error {
-  margin-top: 1rem;
-  background: rgba(185, 28, 28, 0.08);
-  color: var(--danger);
-  padding: 0.7rem 0.9rem;
-  border-radius: 10px;
-  border: 1px solid rgba(185, 28, 28, 0.15);
-}
+          <section id="financeView" class="page hidden">
+            <div class="page-header">
+              <div>
+                <p class="eyebrow">حسابداری</p>
+                <h3>گزارش مالی</h3>
+              </div>
+            </div>
+            <div id="financeCards" class="cards"></div>
+            <div class="panel">
+              <div class="panel-header">
+                <h3>سندها و تراکنش‌ها</h3>
+              </div>
+              <div id="financeTable" class="table-wrap"></div>
+            </div>
+          </section>
 
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.2rem 1.5rem;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-}
+          <section id="auditView" class="page hidden">
+            <div class="page-header">
+              <div>
+                <p class="eyebrow">ممیزی</p>
+                <h3>گزارش فعالیت‌ها</h3>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-header">
+                <h3>رویدادهای سیستم</h3>
+              </div>
+              <div id="auditTable" class="table-wrap"></div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
 
-.topbar h2 {
-  margin: 0;
-  color: var(--primary-dark);
-}
+    <div id="modalBackdrop" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modalTitle">افزودن مورد جدید</h3>
+          <button id="closeModalBtn" class="close-btn" type="button">×</button>
+        </div>
+        <form id="entityForm">
+          <div id="modalFields" class="form-grid"></div>
+          <div class="modal-actions">
+            <button type="button" id="cancelModalBtn" class="ghost-btn">انصراف</button>
+            <button type="submit" class="primary-btn">ذخیره</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-#userBadge {
-  background: var(--panel-alt);
-  color: var(--primary-dark);
-  border: 1px solid var(--border);
-  font-weight: 700;
-  padding: 0.45rem 0.8rem;
-  border-radius: 999px;
-}
-
-.nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem 0;
-}
-
-.nav-item {
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-  padding: 0.7rem 1rem;
-}
-
-.nav-item.active {
-  background: var(--primary);
-  color: white;
-}
-
-main {
-  padding: 1.5rem;
-}
-
-.view {
-  display: block;
-}
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  padding: 1rem;
-}
-
-.card h4 {
-  margin: 0 0 0.4rem;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.card strong {
-  font-size: 1.4rem;
-  color: var(--primary-dark);
-}
-
-.panel-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 1rem;
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  padding: 1rem;
-}
-
-.panel h3 {
-  margin-top: 0;
-  color: var(--primary-dark);
-}
-
-.list {
-  display: grid;
-  gap: 0.7rem;
-}
-
-.list-item {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0.5rem;
-}
-
-.table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel);
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 700px;
-}
-
-th, td {
-  padding: 0.8rem 0.75rem;
-  border-bottom: 1px solid var(--border);
-  text-align: right;
-}
-
-th {
-  background: #f7f9fc;
-  color: var(--primary-dark);
-}
-
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.toolbar h3 {
-  margin: 0;
-}
-
-@media (max-width: 900px) {
-  .panel-grid {
-    grid-template-columns: 1fr;
-  }
-}
+    <script src="/app.js"></script>
+  </body>
+</html>
