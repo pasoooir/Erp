@@ -167,6 +167,9 @@ try {
   await page.locator("#loginForm button[type=submit]").click();
   await page.locator("#appPanel").waitFor({state:"visible"});
   await page.locator("#auditPanel").waitFor({state:"visible"});
+  const auditProbe=await page.evaluate(async()=>{const response=await fetch("/api/v1/audit-events?limit=50&offset=0");return {status:response.status,body:await response.json()};});
+  assert.equal(auditProbe.status,200,"audit API should be available after login; notice="+await page.locator("#notice").textContent());
+  assert.ok(auditProbe.body.data.length>0,"audit API should return persisted events");
   await page.locator("#auditTable tr").first().waitFor();
   assert.ok(await page.locator("#auditTable tr").count()>0,"admin should see persisted audit events");
   assert.equal(await page.locator("#moreAuditButton").isVisible(),false,"pagination button should hide when there is no next page");
