@@ -153,3 +153,54 @@ test("concurrent bootstrap requests can create at most one first administrator",
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM users").get().n,1);
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE r.name='admin'").get().n,1);
 });
+test("admin can edit organization units and enforce hierarchy-aware activation lifecycle", async () => {
+  const {call,DB}=harness();
+  const bootstrap=await call("/api/v1/auth/bootstrap",{
+    ...json({email:"admin@example.com",display_name:"Admin",password:"strong-password-123"}),
+    headers:{"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"}
+  });
+  const cookie=cookieFrom(bootstrap);
+  const companyResponse=await call("/api/v1/org-units",{...json({code:"ACME",name:"Company",unit_type:"company"}),headers:{"content-type":"application/json",cookie}});
+  const company=(await parse(companyResponse)).data;
+  const siteResponse=await call("/api/v1/org-units",{...json({code:"SITE1",name:"Site",unit_type:"site",parent_id:company.id}),headers:{"content-type":"application/json",cookie}});
+  const site=(await parse(siteResponse)).data;
+  const deptResponse=await call("/api/v1/org-units",{...json({code:"DEPT1",name:"Department 1",unit_type:"department",parent_id:site.id}),headers:{"content-type":"application/json",cookie}});
+  const dept=(await parse(deptResponse)).data;
+  const childResponse=await call("/api/v1/org-units",{...json({code:"DEPT2",name:"Department 2",unit_type:"department",parent_id:dept.id}),headers:{"content-type":"application/json",cookie}});
+  const child=(await parse(childResponse)).data;
+
+  const updated=await call("/api/v1/org-units/"+dept.id,{...json({name:"Department Updated",parent_id:site.id}),method:"PATCH",headers:{"content-type":"application/json",cookie}});
+  assert.equal(updated.status,200,await updated.clone().text());
+  assert.equal((await parse(updated)).data.name,"Department Updated");
+  const cycle=await call("/api/v1/org-units/"+dept.id,{...json({parent_id:child.id}),method:"PATCH",headers:{"content-type":"application/json",cookie}});
+  assert.equal(cycle.status,400);
+  assert.equal((await parse(cycle)).error.code,"hierarchy_cycle");
+  const unknownField=await call("/api/v1/org-units/"+dept.id,{...json({status:"inactive"}),method:"PATCH",headers:{"content-type":"application/json",cookie}});
+  assert.equal(unknownField.status,400);
+
+  const companyDeactivate=await call("/api/v1/org-units/"+company.id+"/deactivate",{method:"POST",headers:{cookie}});
+  assert.equal(companyDeactivate.status,409);
+  const childDeactivate=await call("/api/v1/org-units/"+child.id+"/deactivate",{method:"POST",headers:{cookie}});
+  assert.equal(childDeactivate.status,200);
+  const deptDeactivate=await call("/api/v1/org-units/"+dept.id+"/deactivate",{method:"POST",headers:{cookie}});
+  assert.equal(deptDeactivate.status,409);
+  const deptDeactivateAfterChild=await call("/api/v1/org-units/"+dept.id+"/deactivate",{method:"POST",headers:{cookie}});
+  assert.equal(deptDeactivateAfterChild.status,409);
+  const siteDeactivate=await call("/api/v1/org-units/"+site.id+"/deactivate",{method:"POST",headers:{cookie}});
+  assert.equal(siteDeactivate.status,409);
+  const childActivate=await call("/api/v1/org-units/"+child.id+"/activate",{method:"POST",headers:{cookie}});
+  assert.equal(childActivate.status,409);
+  assert.equal((await call("/api/v1/org-units/"+child.id+"/deactivate",{method:"POST",headers:{cookie}})).status,200);
+  assert.equal((await call("/api/v1/org-units/"+dept.id+"/deactivate",{method:"POST",headers:{cookie}})).status,200);
+  assert.equal((await call("/api/v1/org-units/"+site.id+"/deactivate",{method:"POST",headers:{cookie}})).status,200);
+  assert.equal((await call("/api/v1/org-units/"+company.id+"/deactivate",{method:"POST",headers:{cookie}})).status,200);
+  assert.equal((await call("/api/v1/org-units/"+site.id+"/activate",{method:"POST",headers:{cookie}})).status,409);
+  assert.equal((await call("/api/v1/org-units/"+company.id+"/activate",{method:"POST",headers:{cookie}})).status,200);
+  assert.equal((await call("/api/v1/org-units/"+site.id+"/activate",{method:"POST",headers:{cookie}})).status,200);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action IN ('org_unit.updated','org_unit.activated','org_unit.deactivated')").get().n,8);
+});
+test("organization lifecycle endpoints still require a session and admin role", async () => {
+  const {call}=harness();
+  const noSession=await call("/api/v1/org-units/not-a-real-id/deactivate",{method:"POST"});
+  assert.equal(noSession.status,401);
+});
