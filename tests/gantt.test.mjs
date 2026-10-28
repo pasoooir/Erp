@@ -87,3 +87,13 @@ test("rejects unknown dependency IDs", () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unknown id/);
 });
+test("rejects dependency cycles", () => {
+  const data = fixture();
+  const leafA = data.resources[0].children[0].children[0].children[0].children[0].children[0];
+  const leafB = data.resources[0].children[0].children[0].children[0].children[0].children[1];
+  leafA.dependencies = [leafB.id];
+  leafB.dependencies = [leafA.id];
+  const result = run(data, ["--check"]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /dependency cycle/);
+});
