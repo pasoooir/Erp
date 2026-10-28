@@ -62,7 +62,7 @@ function walk(items, parentLevel = 0, parentId = null) {
     if (level === 4 && (!Array.isArray(node.acceptance_criteria) || node.acceptance_criteria.length === 0 ||
         node.acceptance_criteria.some(value => typeof value !== "string" || !value.trim())))
       errors.push(`${id}: level 4 needs non-empty acceptance_criteria strings`);
-    if (node.status === "completed") {
+    if (node.status === "completed" && (check || !children.length)) {
       if (children.length) {
         if (!children.every(child => child && child.status === "completed"))
           errors.push(`${id}: completed parent requires every immediate child completed`);
