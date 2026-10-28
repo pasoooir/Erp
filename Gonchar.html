@@ -75,7 +75,7 @@ if(!roots.length){$('tree').innerHTML='<div class="empty">در فایل JSON م�
 const frag=document.createDocumentFragment();roots.forEach(n=>frag.appendChild(buildItem(n,1)));$('tree').appendChild(frag);
 $('treeTitle').textContent='ساختار سازمانی و کارها';$('treeSubtitle').textContent='برای دیدن زیرمجموعه، روی هر ردیف بزن؛ جزئیات در کنار صفحه نمایش داده می‌شود.';
 }
-function matches(n,q,lv,st){return (!q||(n.name+' '+n.id+' '+n._path.join(' ')).toLowerCase().includes(q))&&(lv==='all'||String(n.level)===lv)&&(st==='all'||n.status===st)}
+function matches(n,q,lv,st){return (!q||(n.name+' '+n.id+' '+n._path.join(' ')).toLowerCase().includes(q))&&(lv==='all'||String(n.level)===lv)&&(st==='all'||(n.status||'not_started')===st)}
 function renderResults(){
 searchMode=true;$('tree').classList.add('hidden');$('results').classList.remove('hidden');
 const q=$('search').value.trim().toLowerCase(),lv=$('levelFilter').value,st=$('statusFilter').value;
