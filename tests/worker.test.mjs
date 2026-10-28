@@ -214,3 +214,54 @@ test("authenticated non-admin users cannot read or mutate organization data", as
   assert.equal((await call("/api/v1/org-units/fake-id",{...json({name:"Changed"}),method:"PATCH",headers})).status,403);
   assert.equal((await call("/api/v1/org-units/fake-id/deactivate",{method:"POST",headers})).status,403);
 });
+test("admin provisions scoped users and org managers cannot cross organization boundaries", async () => {
+  const {call,DB}=harness();
+  const adminBootstrap=await call("/api/v1/auth/bootstrap",{
+    ...json({email:"admin@example.com",display_name:"Admin",password:"strong-password-123"}),
+    headers:{"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"}
+  });
+  const adminCookie=cookieFrom(adminBootstrap);
+  const createUnit=async body=>parse(await call("/api/v1/org-units",{...json(body),headers:{"content-type":"application/json",cookie:adminCookie}}));
+  const companyA=(await createUnit({code:"ACME",name:"Company A",unit_type:"company"})).data;
+  const siteA=(await createUnit({code:"SITEA",name:"Site A",unit_type:"site",parent_id:companyA.id})).data;
+  const companyB=(await createUnit({code:"OTHER",name:"Company B",unit_type:"company"})).data;
+  const siteB=(await createUnit({code:"SITEB",name:"Site B",unit_type:"site",parent_id:companyB.id})).data;
+
+  const created=await call("/api/v1/users",{...json({
+    email:"manager@example.com",display_name:"Org Manager",password:"manager-password-123",
+    roles:["org_manager"],scope_ids:[companyA.id]
+  }),headers:{"content-type":"application/json",cookie:adminCookie}});
+  assert.equal(created.status,201,await created.clone().text());
+  const manager=(await parse(created));
+  assert.equal(manager.data.roles,"org_manager");
+  assert.equal(manager.data.scope_count,1);
+  const duplicate=await call("/api/v1/users",{...json({
+    email:"MANAGER@example.com",display_name:"Duplicate",password:"manager-password-123",
+    roles:["reader"],scope_ids:[companyA.id]
+  }),headers:{"content-type":"application/json",cookie:adminCookie}});
+  assert.equal(duplicate.status,409);
+  assert.equal((await call("/api/v1/users",{headers:{cookie:adminCookie}})).status,200);
+
+  const login=await call("/api/v1/auth/login",json({email:"manager@example.com",password:"manager-password-123"}));
+  assert.equal(login.status,200);
+  const managerCookie=cookieFrom(login);
+  const scopedList=await call("/api/v1/org-units",{headers:{cookie:managerCookie}});
+  assert.equal(scopedList.status,200);
+  const visible=(await parse(scopedList)).data.map(unit=>unit.code).sort();
+  assert.deepEqual(visible,["ACME","SITEA"]);
+  const ownChild=await call("/api/v1/org-units",{...json({code:"DEPTA",name:"Scoped Department",unit_type:"department",parent_id:siteA.id}),headers:{"content-type":"application/json",cookie:managerCookie}});
+  assert.equal(ownChild.status,201,await ownChild.clone().text());
+  const outsideChild=await call("/api/v1/org-units",{...json({code:"DEPTB",name:"Outside Department",unit_type:"department",parent_id:siteB.id}),headers:{"content-type":"application/json",cookie:managerCookie}});
+  assert.equal(outsideChild.status,403);
+  const rootCompany=await call("/api/v1/org-units",{...json({code:"ROOT2",name:"Forbidden Root",unit_type:"company"}),headers:{"content-type":"application/json",cookie:managerCookie}});
+  assert.equal(rootCompany.status,403);
+  assert.equal((await call("/api/v1/org-units/"+siteB.id,{...json({name:"Outside Update"}),method:"PATCH",headers:{"content-type":"application/json",cookie:managerCookie}})).status,403);
+  assert.equal((await call("/api/v1/org-units/"+siteB.id+"/deactivate",{method:"POST",headers:{cookie:managerCookie}})).status,403);
+  assert.equal((await call("/api/v1/users",{headers:{cookie:managerCookie}})).status,403);
+
+  const disabled=await call("/api/v1/users/"+manager.data.id+"/deactivate",{method:"POST",headers:{cookie:adminCookie}});
+  assert.equal(disabled.status,200);
+  assert.equal((await call("/api/v1/auth/me",{headers:{cookie:managerCookie}})).status,401);
+  assert.equal((await call("/api/v1/users/"+(await parse(adminBootstrap)).data.id+"/deactivate",{method:"POST",headers:{cookie:adminCookie}})).status,409);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action IN ('user.created','user.deactivated')").get().n,2);
+});
