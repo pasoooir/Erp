@@ -344,6 +344,7 @@ async function updateOrgUnit(request, env, user, id) {
         SELECT child.id FROM org_units child JOIN descendants d ON child.parent_id=d.id
       ) SELECT id FROM descendants WHERE id=? LIMIT 1`).bind(id, parentId).first();
     if (descendant) return fail(400, "hierarchy_cycle", "انتقال واحد به یکی از زیرمجموعه‌های خودش مجاز نیست.");
+    if (!user.roles.includes("admin") && !await hasPermission(env,user,"org_unit","update",parentId)) return fail(403,"forbidden","انتقال واحد به خارج از محدوده سازمانی مجاز نیست.");
   }
   try {
     const results = await env.DB.batch([
