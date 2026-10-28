@@ -447,6 +447,29 @@ async function route(request, env) {
     if (!user) return fail(401, "unauthenticated", "برای ایجاد واحد سازمانی وارد سامانه شو.");
     return createOrgUnit(request, env, user);
   }
+  if (url.pathname === "/api/v1/audit-events" && method === "GET") {
+    if (!user) return fail(401, "unauthenticated", "برای مشاهده گزارش ممیزی وارد سامانه شو.");
+    if (!await hasPermission(env, user, "audit", "read")) return fail(403, "forbidden", "مشاهده گزارش ممیزی مجاز نیست.");
+    const rawLimit = url.searchParams.get("limit");
+    const rawOffset = url.searchParams.get("offset");
+    const limit = rawLimit === null ? 50 : Number(rawLimit);
+    const offset = rawOffset === null ? 0 : Number(rawOffset);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100 ||
+        !Number.isInteger(offset) || offset < 0 || offset > 10000) {
+      return fail(400, "invalid_pagination", "limit باید ۱ تا ۱۰۰ و offset باید ۰ تا ۱۰۰۰۰ باشد.");
+    }
+    const result = await env.DB.prepare(`SELECT e.id, e.actor_user_id, u.email AS actor_email,
+        e.action, e.entity_type, e.entity_id, e.metadata_json, e.created_at
+      FROM audit_events e LEFT JOIN users u ON u.id=e.actor_user_id
+      ORDER BY e.created_at DESC, e.id DESC LIMIT ? OFFSET ?`).bind(limit + 1, offset).all();
+    const hasMore = result.results.length > limit;
+    const events = result.results.slice(0, limit).map(event => {
+      let metadata = {};
+      try { metadata = JSON.parse(event.metadata_json || "{}"); } catch { metadata = { invalid: true }; }
+      return { ...event, metadata };
+    });
+    return json({ data: events, meta: { limit, offset, count: events.length, has_more: hasMore } });
+  }
   if (url.pathname === "/api/v1/users" && method === "GET") {
     if (!user) return fail(401,"unauthenticated","برای مشاهده کاربران وارد سامانه شو.");
     return listUsers(env,user);
