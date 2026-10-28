@@ -59,7 +59,7 @@ test("dashboard renders, searches, filters, shows detail, exports CSV and remain
   assert.equal(columns,1);
   const errorPage=await browser.newPage();
   await errorPage.goto(baseUrl+"/broken/Gonchar.html");
-  await errorPage.getByText(/فایل erp-project\\.json بارگذاری نشد/).waitFor();
+  await errorPage.getByText(/فایل erp-project\.json بارگذاری نشد/).waitFor();
   await errorPage.close();
   assert.deepEqual(pageErrors,[]);
 });
