@@ -5,15 +5,15 @@ on:
     paths:
       - "erp-project.json"
       - "Gonchar.html"
-      - "scripts/gantt.mjs"
-      - "scripts/check-gantt-dashboard.mjs"
+      - "scripts/**"
+      - "tests/**"
       - ".github/workflows/gantt-contract.yml"
   pull_request:
     paths:
       - "erp-project.json"
       - "Gonchar.html"
-      - "scripts/gantt.mjs"
-      - "scripts/check-gantt-dashboard.mjs"
+      - "scripts/**"
+      - "tests/**"
       - ".github/workflows/gantt-contract.yml"
   workflow_dispatch:
 permissions:
@@ -21,6 +21,7 @@ permissions:
 jobs:
   validate-gantt:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -30,5 +31,7 @@ jobs:
           node-version: "22"
       - name: Validate Gantt JSON contract
         run: node scripts/gantt.mjs --check
+      - name: Test Gantt validator positive and negative cases
+        run: node --test tests/gantt.test.mjs
       - name: Check dashboard JavaScript syntax
         run: node scripts/check-gantt-dashboard.mjs
