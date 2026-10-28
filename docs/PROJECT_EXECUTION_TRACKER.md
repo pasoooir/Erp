@@ -26,7 +26,7 @@
 | ERP-FOUNDATION-002 | مهاجرت روی D1 توسعه اختصاصی | migration روی D1 محلی در CI اعمال شد؛ `wrangler.toml` از UUID محلی استفاده می‌کند؛ هیچ D1 راه‌دور تغییر نکرد | in_progress | بعداً یک D1 توسعه جداگانه تعیین و UUID آن را پس از بازبینی تنظیم کن؛ دیتابیس connectivity را استفاده نکن |
 | ERP-FOUNDATION-003 | رفتار واقعی UI مرورگر | Chromium smoke در [40715257341](https://github.com/pasoooir/Erp/actions/runs/40715257341) bootstrap/login، ایجاد/ویرایش/فعال‌سازی واحد، ایجاد کاربر با scope، نام محدوده، cross-company denial، revoke نشست، نقش‌های read-only و RTL موبایل را بررسی کرد | in_progress | آزمون مرورگری خطاهای فرم/شبکه و نقش غیرمدیر را بیشتر کن |
 
-## قرارداد پیشرفت و همگام‌سازی
+## کارهای افزوده‌شده\n\n| ERP-AUDIT-API-001 | API گزارش ممیزی با کنترل دسترسی مدیر، صفحه‌بندی محدود و آزمون دسترسی غیرمجاز | `src/index.js`, `tests/worker.test.mjs`, `docs/ERP_FOUNDATION.md`; شاخه `feature/erp-audit-events-api` | in_progress | اجرای آزمون‌ها و CI؛ سپس UI گزارش ممیزی و فیلترهای آن |\n\n## قرارداد پیشرفت و همگام‌سازی
 
 وضعیت‌ها: `not_started`، `in_progress`، `blocked`، `completed`. تکمیل فقط با معیارهای پاس‌شده و شواهد قابل بازبینی مجاز است.
 
