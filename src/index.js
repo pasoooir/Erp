@@ -423,6 +423,8 @@ async function route(request, env) {
           FROM org_units u LEFT JOIN org_units p ON p.id=u.parent_id ORDER BY u.code LIMIT 1000`).all()
       : await (async()=>{
           if(!await hasPermission(env,user,"org_unit","read"))return null;
+          const scopeExists=await env.DB.prepare("SELECT 1 FROM user_org_scopes WHERE user_id=? LIMIT 1").bind(user.id).first();
+          if(!scopeExists)return null;
           return env.DB.prepare(`WITH RECURSIVE accessible(id) AS (
               SELECT org_unit_id FROM user_org_scopes WHERE user_id=?
               UNION
