@@ -1,15 +1,15 @@
 (() => {
   const $ = id => document.getElementById(id);
   const forms = { bootstrap:$("bootstrapForm"), login:$("loginForm"), unit:$("unitForm"), edit:$("editUnitForm"), users:$("userForm") };
-  let currentUser=null, units=[], users=[], auditEvents=[], auditOffset=0;
+  let currentUser=null, units=[], users=[], auditEvents=[], auditOffset=0, auditHasMore=false;
   const labels={company:"شرکت",site:"سایت / کارخانه",department:"واحد سازمانی",position:"سمت",production_line:"خط تولید",warehouse:"انبار"};
   const roleLabels={admin:"مدیر سراسری",org_manager:"مدیر واحد سازمانی",operator:"اپراتور",reader:"مشاهده‌گر"};
   function notice(message,kind=""){const el=$("notice");el.textContent=message;el.className="notice"+(kind?" "+kind:"");}
-  async function api(path,options={}){
+  async function api(path,options={},includeMeta=false){
     const response=await fetch(path,{credentials:"same-origin",...options,headers:{...(options.body?{"content-type":"application/json"}:{}),...(options.headers||{})}});
     let payload;try{payload=await response.json();}catch{throw new Error("پاسخ معتبر از سرور دریافت نشد.");}
     if(!response.ok)throw new Error(payload?.error?.message||"درخواست ناموفق بود.");
-    return payload.data;
+    return includeMeta?payload:payload.data;
   }
   const formData=form=>Object.fromEntries(new FormData(form).entries());
   function syncUserScopeRequirement(){
@@ -112,15 +112,16 @@
       for(const value of values){const td=document.createElement("td");td.textContent=value;tr.appendChild(td);}
       body.appendChild(tr);
     }
-    $("moreAuditButton").disabled=auditEvents.length>0&&auditEvents.length%50!==0;
-    $("moreAuditButton").classList.toggle("hidden",auditEvents.length===0 || auditEvents.length%50!==0);
+    $("moreAuditButton").disabled=!auditHasMore;
+    $("moreAuditButton").classList.toggle("hidden",!auditHasMore);
   }
   async function loadAudit(reset=false){
     if(!currentUser?.roles.includes("admin"))return;
     const button=$("refreshAuditButton");button.disabled=true;
     if(reset){auditEvents=[];auditOffset=0;renderAudit();}
     try{
-      const page=await api("/api/v1/audit-events?limit=50&offset="+auditOffset);
+      const response=await api("/api/v1/audit-events?limit=50&offset="+auditOffset,{},true);
+      const page=response.data||[];auditHasMore=Boolean(response.meta?.has_more);
       auditEvents=reset?page:auditEvents.concat(page);auditOffset+=page.length;renderAudit();
       if(reset&&page.length===0)notice("گزارش ممیزی هنوز رویدادی ندارد.","success");
     }catch(e){notice(e.message,"error");}
