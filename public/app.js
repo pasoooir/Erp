@@ -1,7 +1,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const forms = { bootstrap:$("bootstrapForm"), login:$("loginForm"), unit:$("unitForm"), edit:$("editUnitForm"), users:$("userForm") };
-  let currentUser=null, units=[], users=[];
+  let currentUser=null, units=[], users=[], auditEvents=[], auditOffset=0;
   const labels={company:"شرکت",site:"سایت / کارخانه",department:"واحد سازمانی",position:"سمت",production_line:"خط تولید",warehouse:"انبار"};
   const roleLabels={admin:"مدیر سراسری",org_manager:"مدیر واحد سازمانی",operator:"اپراتور",reader:"مشاهده‌گر"};
   function notice(message,kind=""){const el=$("notice");el.textContent=message;el.className="notice"+(kind?" "+kind:"");}
@@ -33,6 +33,7 @@
     $("createPanel").classList.toggle("hidden",!canManage);
     $("editPanel").classList.toggle("hidden",!canManage||!forms.edit.elements.id.value);
     $("usersPanel").classList.toggle("hidden",!isAdmin);
+    $("auditPanel").classList.toggle("hidden",!isAdmin);
     syncUserScopeRequirement();
   }
   function populateParentSelect(select,oldValue,excludeId=null){
@@ -101,10 +102,34 @@
     try{users=await api("/api/v1/users");renderUsers();}
     catch(e){notice(e.message,"error");}
   }
+  function renderAudit(){
+    const body=$("auditTable");body.replaceChildren();
+    $("auditEmpty").classList.toggle("hidden",auditEvents.length>0);
+    for(const event of auditEvents){
+      const tr=document.createElement("tr");
+      const metadata=JSON.stringify(event.metadata||{});
+      const values=[event.created_at||"—",event.actor_email||"سیستم",event.action||"—",event.entity_type||"—",event.entity_id||"—",metadata.length>240?metadata.slice(0,237)+"…":metadata];
+      for(const value of values){const td=document.createElement("td");td.textContent=value;tr.appendChild(td);}
+      body.appendChild(tr);
+    }
+    $("moreAuditButton").disabled=auditEvents.length>0&&auditEvents.length%50!==0;
+    $("moreAuditButton").classList.toggle("hidden",auditEvents.length===0 || auditEvents.length%50!==0);
+  }
+  async function loadAudit(reset=false){
+    if(!currentUser?.roles.includes("admin"))return;
+    const button=$("refreshAuditButton");button.disabled=true;
+    if(reset){auditEvents=[];auditOffset=0;renderAudit();}
+    try{
+      const page=await api("/api/v1/audit-events?limit=50&offset="+auditOffset);
+      auditEvents=reset?page:auditEvents.concat(page);auditOffset+=page.length;renderAudit();
+      if(reset&&page.length===0)notice("گزارش ممیزی هنوز رویدادی ندارد.","success");
+    }catch(e){notice(e.message,"error");}
+    finally{button.disabled=false;}
+  }
   async function refreshAuth(){
     try{
       const user=await api("/api/v1/auth/me");showApp(user);notice("ورود موفق بود؛ داده‌ها از D1 خوانده می‌شوند.","success");
-      await loadUnits();if(user.roles.includes("admin"))await loadUsers();
+      await loadUnits();if(user.roles.includes("admin")){await loadUsers();await loadAudit(true);}
     }catch{
       currentUser=null;cancelEdit();const status=await api("/api/v1/auth/status");showAuth(status.bootstrap_required);notice(status.bootstrap_required?"پایگاه داده آماده ساخت نخستین مدیر است.":"برای ادامه وارد سامانه شوید.");
     }
@@ -156,6 +181,8 @@
     try{await api("/api/v1/users/"+encodeURIComponent(button.dataset.id)+"/"+button.dataset.next,{method:"POST"});notice(button.dataset.next==="deactivate"?"کاربر غیرفعال شد و نشست‌هایش باطل شدند.":"کاربر فعال شد.","success");await loadUsers();}
     catch(e){notice(e.message,"error");}finally{button.disabled=false;}
   });
+  $("refreshAuditButton").addEventListener("click",()=>loadAudit(true));
+  $("moreAuditButton").addEventListener("click",()=>loadAudit(false));
   $("cancelEditButton").addEventListener("click",cancelEdit);
   $("logoutButton").addEventListener("click",async()=>{
     try{await api("/api/v1/auth/logout",{method:"POST"});currentUser=null;cancelEdit();showAuth(false);notice("از سامانه خارج شدید.","success");}
