@@ -16,7 +16,7 @@ class Statement {
   async run() { const result=this.db.prepare(this.sql).run(...this.values); return { success:true, meta:{changes:Number(result.changes),last_row_id:Number(result.lastInsertRowid||0)} }; }
 }
 class TestD1 {
-  constructor() { this.sqlite=new DatabaseSync(":memory:"); this.sqlite.exec(migration); }
+  constructor() { this.sqlite=new DatabaseSync(":memory:"); this.sqlite.exec("PRAGMA foreign_keys = ON"); this.sqlite.exec(migration); }
   prepare(sql) { return new Statement(this.sqlite,sql); }
   async batch(statements) {
     this.sqlite.exec("BEGIN");
