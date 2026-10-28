@@ -24,9 +24,9 @@
 
 | شناسه | مسئله / معیار پذیرش | فایل‌ها و شواهد | وضعیت | اقدام بعدی |
 |---|---|---|---|---|
-| GANTT-TRACE-001 | اعتبارسنجی JSON، شناسه‌های یکتا، درخت دقیق شش‌سطحی، وضعیت/درصد و معیارهای سطح ۴ | `scripts/gantt.mjs`; [PR #2](https://github.com/pasoooir/Erp/pull/2); اجرای اولیه CI: [40706435998](https://github.com/pasoooir/Erp/actions/runs/40706435998) | in_progress | regression tests جدید و اجرای واقعی روی JSON اصلی را در آخرین CI تأیید کن؛ parent aggregation را پوشش بده |
+| GANTT-TRACE-001 | اعتبارسنجی JSON، شناسه‌های یکتا، درخت دقیق شش‌سطحی، وضعیت/درصد، معیارهای سطح ۴ و وابستگی بدون چرخه | `scripts/gantt.mjs`, `tests/gantt.test.mjs`; [PR #2](https://github.com/pasoooir/Erp/pull/2); CI سبز [40709809309](https://github.com/pasoooir/Erp/actions/runs/40709809309) | completed | پس از ادغام کنترل‌شده، نگهداری این قرارداد در CI main |
 | GANTT-TRACE-002 | همگام‌سازی والدها با میانگین برابر پیشرفت فرزندان؛ وضعیت والد: همه completed ← completed، در غیر این صورت blocked اگر فرزندی blocked باشد، سپس in_progress اگر فرزندی در حال اجرا/تکمیل باشد، وگرنه not_started؛ برگ هرگز خودکار completed نشود | `scripts/gantt.mjs`, `tests/gantt.test.mjs`; کپی موقت در CI، نه تغییر JSON اصلی | in_progress | نتیجه آخرین workflow را تأیید کن و diff کپی را بررسی کن |
-| GANTT-TRACE-003 | داشبورد RTL بارگذاری، درخت، جست‌وجو/فیلتر، جزئیات، وابستگی‌ها، ردیابی و CSV را در مرورگر درست ارائه کند | `Gonchar.html`, `scripts/check-gantt-dashboard.mjs`; [CI latest](https://github.com/pasoooir/Erp/actions) فقط syntax را می‌سنجد | in_progress | آزمون واقعی مرورگر برای بارگذاری موفق/ناموفق، جست‌وجو، فیلتر، جزئیات و CSV اضافه شود |
+| GANTT-TRACE-003 | داشبورد RTL بارگذاری، درخت، جست‌وجو/فیلتر، جزئیات، ردیابی، لینک امن، CSV و نمایش موبایل را در مرورگر درست ارائه کند | `Gonchar.html`, `tests/dashboard-browser.test.mjs`; CI سبز [40709809309](https://github.com/pasoooir/Erp/actions/runs/40709809309) با Chromium | completed | انتشار main جداگانه بررسی شود؛ این PR هنوز منتشر نشده است |
 | GANTT-TRACE-004 | مشخص‌کردن دامنه واقعی کد ERP و جلوگیری از ثبت قابلیت ساختگی | main tree: فقط `Gonchar.html`, `README.md`, `erp-project.json`; شاخه PR1 فقط workflow/docs اتصال دارد | completed | کد عملیاتی در main وجود ندارد؛ آغاز پایه ERP در شاخه جداگانه با آزمون و migration آزمایشی |
 | CF-CONN-001 | اثبات اتصال GitHub Actions به Cloudflare با credential واقعی، فهرست D1 و SELECT پارامتری از marker آزمایشی | [PR #1](https://github.com/pasoooir/Erp/pull/1); ابزار Cloudflare خارج از Actions: D1 تستی ساخته و marker خوانده شد | blocked | اجرای manual workflow در GitHub Actions لازم است؛ از این کانکتور امکان dispatch کردن workflow دستی فراهم نیست؛ توکن چاپ/تغییر داده نشود |
 | ERP-FOUNDATION-001 | ساخت نخستین قابلیت عمودی واقعی با Worker/D1، کنترل دسترسی سمت سرور، مهاجرت و آزمون مثبت/منفی | هنوز در main پیاده‌سازی نشده | not_started | ایجاد شاخه جداگانه برای پایه عملیاتی، پس از تأیید معماری و تست‌ها؛ بدون deploy یا migration زنده |
@@ -37,7 +37,8 @@
 - این اعداد فقط ساختار برنامه‌ریزی را نشان می‌دهند، نه میزان تکمیل ERP.
 - `Gonchar.html` فایل JSON را با `fetch('./erp-project.json')` می‌خواند و فقط‌خواندنی است.
 - `scripts/gantt.mjs --check` اعتبارسنجی می‌کند؛ `--sync-summary --file /tmp/...` باید فقط روی کپی آزمایش شود تا diff بازبینی شود.
-- آزمون syntax جاوااسکریپت داشبورد، آزمون رفتار مرورگر نیست.
+- آزمون Chromium در CI بارگذاری موفق/ناموفق JSON، جست‌وجو، فیلتر سطح/وضعیت، جزئیات، CSV و چیدمان RTL موبایل را بررسی می‌کند.
+- JSON اصلی دست‌نخورده مانده؛ هر ۷٬۷۲۸ گره وضعیت و درصد ندارد و هیچ گرهی completed نیست. پرکردن وضعیت‌های والد با صفر، پیشرفت واقعی ERP را ثابت نمی‌کند.
 
 ## مرزهای اختیار
 
