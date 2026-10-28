@@ -15,7 +15,7 @@
 
 1. Node.js 22 یا جدیدتر لازم است.
 2. یک D1 جداگانه برای توسعه بساز؛ دیتابیس `erp-connectivity-test-20261028` فقط برای آزمون اتصال است و نباید برای داده ERP استفاده شود.
-3. شناسه دیتابیس توسعه را در `wrangler.toml` جایگزین `REPLACE_WITH_DEDICATED_DEVELOPMENT_D1_UUID` کن.
+3. شناسه معتبر محلی `00000000-0000-4000-8000-000000000001` در `wrangler.toml` فقط برای D1 محلی است. برای D1 راه‌دور، شناسه دیتابیس توسعه اختصاصی واقعی را جایگزین کن.
 4. در فایل محلی `.dev.vars` (که Git آن را نادیده می‌گیرد) مقدار `BOOTSTRAP_SECRET` را به‌عنوان یک رشته تصادفی محرمانه با حداقل ۳۲ نویسه تعریف کن. آن را در کد یا GitHub commit نکن.
 5. `npx wrangler d1 migrations apply erp-dev --local` برای D1 محلی؛ `npx wrangler dev` برای اجرا.
 6. آزمون‌های مستقل: `npm test` و `npm run check`.
