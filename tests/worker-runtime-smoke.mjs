@@ -68,6 +68,18 @@ try {
   await page.locator("#unitForm button[type=submit]").click();
   await page.locator("#unitsTable tr").filter({hasText:"SITE1"}).waitFor();
   assert.equal(await page.locator("#unitsTable tr").count(),2);
+  let siteRow=page.locator("#unitsTable tr").filter({hasText:"SITE1"});
+  await siteRow.locator('button[data-action="edit"]').click();
+  await page.locator("#editPanel").waitFor({state:"visible"});
+  await page.locator('#editUnitForm input[name="name"]').fill("کارخانه مرکزی ویرایش‌شده");
+  await page.locator('#editUnitForm button[type="submit"]').click();
+  await page.locator("#unitsTable tr").filter({hasText:"کارخانه مرکزی ویرایش‌شده"}).waitFor();
+  siteRow=page.locator("#unitsTable tr").filter({hasText:"SITE1"});
+  await siteRow.locator('button[data-action="status"]').click();
+  await siteRow.locator("td").nth(4).getByText("غیرفعال").waitFor();
+  siteRow=page.locator("#unitsTable tr").filter({hasText:"SITE1"});
+  await siteRow.locator('button[data-action="status"]').click();
+  await siteRow.locator("td").nth(4).getByText("فعال").waitFor();
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"mobile page should not overflow horizontally");
   assert.deepEqual(pageErrors,[]);
