@@ -322,6 +322,7 @@ async function route(request, env) {
   }
   if (url.pathname === "/api/v1/org-units" && method === "GET") {
     if (!user) return fail(401, "unauthenticated", "برای مشاهده ساختار سازمانی وارد سامانه شو.");
+    if (!user.roles.includes("admin")) return fail(403, "forbidden", "تا زمان تکمیل مجوزهای محدودشده سازمانی، مشاهده ساختار فقط برای مدیر مجاز است.");
     const result = await env.DB.prepare(`SELECT u.id, u.parent_id, p.name AS parent_name, u.code, u.name, u.unit_type, u.status, u.created_at, u.updated_at
       FROM org_units u LEFT JOIN org_units p ON p.id=u.parent_id ORDER BY u.code LIMIT 1000`).all();
     return json({ data: result.results, meta: { count: result.results.length } });
