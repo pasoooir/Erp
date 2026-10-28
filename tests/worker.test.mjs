@@ -53,7 +53,7 @@ test("bootstrap requires secret, creates one admin and refuses a second bootstra
   const created=await call("/api/v1/auth/bootstrap",{
     ...json(body),headers:{"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"}
   });
-  assert.equal(created.status,201,await created.clone().text());
+  assert.equal(created.status,201);
   assert.match(created.headers.get("set-cookie"),/HttpOnly/);
   assert.match(created.headers.get("set-cookie"),/Secure/);
   assert.match(created.headers.get("set-cookie"),/SameSite=Strict/);
