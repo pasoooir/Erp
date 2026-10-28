@@ -24,7 +24,7 @@
 - کاربر غیرمدیر بدون scope مجاز نیست. ایجاد شرکت ریشه و مدیریت کاربران فقط برای admin مجاز است.
 - جابه‌جایی واحد به بیرون از scope رد می‌شود. فهرست کاربران فقط برای admin قابل دسترسی است.
 
-## گزارش ممیزی\n\n- `GET /api/v1/audit-events?limit=50&offset=0`: فهرست صفحه‌بندی‌شده رویدادهای ممیزی فقط برای نقشی که مجوز `audit:read` دارد (در حال حاضر admin). حد `limit` بین ۱ تا ۱۰۰ و `offset` بین ۰ تا ۱۰۰۰۰ است؛ خروجی شامل actor، عمل، موجودیت، فراداده و `has_more` است.\n\n## قرارداد API
+## گزارش ممیزی\n\n- `GET /api/v1/audit-events?limit=50&offset=0`: فهرست صفحه‌بندی‌شده رویدادهای ممیزی فقط برای نقشی که مجوز `audit:read` دارد (در حال حاضر admin). حد `limit` بین ۱ تا ۱۰۰ و `offset` بین ۰ تا ۱۰۰۰۰ است؛ خروجی شامل actor، عمل، موجودیت، فراداده و `has_more` است. UI مدیر گزارش را با صفحه‌های ۵۰تایی از API می‌خواند.\n\n## قرارداد API
 
 - `POST /api/v1/auth/bootstrap`: ایجاد یک‌باره نخستین مدیر با `X-Bootstrap-Secret`، `email`، `display_name` و `password`.
 - `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`.
