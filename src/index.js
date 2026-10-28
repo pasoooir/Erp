@@ -293,6 +293,45 @@ async function setUserStatus(env, actor, id, nextStatus) {
   }catch{return fail(500,"user_status_failed","تغییر وضعیت کاربر انجام نشد.");}
   return json({data:await safeUser(env,id)});
 }
+async function updateUserAccess(request, env, actor, id) {
+  if (!actor.roles.includes("admin")) return fail(403, "forbidden", "فقط مدیر سامانه می‌تواند نقش و محدوده کاربران را ویرایش کند.");
+  if (id === actor.id) return fail(409, "cannot_edit_self_access", "نقش و محدوده حساب جاری قابل ویرایش نیست.");
+  let body;
+  try { body = await readJson(request); } catch (e) {
+    return fail(e.message === "too_large" ? 413 : 400, e.message === "content_type" ? "content_type_required" : "invalid_json", "درخواست معتبر نیست.");
+  }
+  if (Object.keys(body).some(key => !["roles", "scope_ids"].includes(key)) || !Array.isArray(body.roles) || !Array.isArray(body.scope_ids))
+    return fail(400, "validation_failed", "فقط فهرست roles و scope_ids را ارسال کنید.");
+  const roleNames=[...new Set(body.roles.map(value=>String(value).trim()))];
+  const scopeIds=[...new Set(body.scope_ids.map(value=>String(value)))];
+  const allowedRoles=["admin","org_manager","operator","reader"];
+  if(!roleNames.length||roleNames.length>4||roleNames.some(name=>!allowedRoles.includes(name))) return fail(400,"invalid_roles","نقش‌های انتخاب‌شده معتبر نیستند.");
+  if(scopeIds.length>50||scopeIds.some(value=>!value||value.length>64)) return fail(400,"invalid_scopes","فهرست محدوده‌های سازمانی معتبر نیست.");
+  if(roleNames.includes("admin")&&scopeIds.length) return fail(400,"admin_scope_not_allowed","مدیر سامانه به محدوده نیاز ندارد.");
+  if(!roleNames.includes("admin")&&!scopeIds.length) return fail(400,"scope_required","برای کاربر غیرمدیر دست‌کم یک محدوده تعیین کنید.");
+  const existing=await env.DB.prepare("SELECT id,status,EXISTS(SELECT 1 FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE ur.user_id=users.id AND r.name='admin') AS is_admin FROM users WHERE id=?").bind(id).first();
+  if(!existing)return fail(404,"user_not_found","کاربر پیدا نشد.");
+  if(existing.status==="active"&&existing.is_admin&&!roleNames.includes("admin")){
+    const count=await env.DB.prepare("SELECT COUNT(DISTINCT u.id) AS count FROM users u JOIN user_roles ur ON ur.user_id=u.id JOIN roles r ON r.id=ur.role_id WHERE u.status='active' AND r.name='admin'").first();
+    if(Number(count?.count||0)<=1)return fail(409,"last_admin","نقش آخرین مدیر فعال را نمی‌توان حذف کرد.");
+  }
+  const roleResult=await env.DB.prepare("SELECT id,name FROM roles WHERE name IN ("+roleNames.map(()=>"?").join(",")+")").bind(...roleNames).all();
+  if(roleResult.results.length!==roleNames.length)return fail(400,"invalid_roles","یکی از نقش‌ها در پایگاه داده تعریف نشده است.");
+  if(scopeIds.length){
+    const scopeResult=await env.DB.prepare("SELECT id FROM org_units WHERE status='active' AND id IN ("+scopeIds.map(()=>"?").join(",")+")").bind(...scopeIds).all();
+    if(scopeResult.results.length!==scopeIds.length)return fail(400,"invalid_scopes","یکی از محدوده‌ها وجود ندارد یا فعال نیست.");
+  }
+  const statements=[
+    env.DB.prepare("DELETE FROM user_roles WHERE user_id=?").bind(id),
+    env.DB.prepare("DELETE FROM user_org_scopes WHERE user_id=?").bind(id)
+  ];
+  for(const role of roleResult.results) statements.push(env.DB.prepare("INSERT INTO user_roles (user_id,role_id) VALUES (?,?)").bind(id,role.id));
+  for(const scopeId of scopeIds) statements.push(env.DB.prepare("INSERT INTO user_org_scopes (user_id,org_unit_id,created_by) VALUES (?,?,?)").bind(id,scopeId,actor.id));
+  statements.push(env.DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json) VALUES (?,?,'user.access_updated','user',?,?)")
+    .bind(crypto.randomUUID(),actor.id,id,JSON.stringify({roles:roleNames,scope_count:scopeIds.length})));
+  try { await env.DB.batch(statements); } catch { return fail(500,"user_access_update_failed","ویرایش نقش و محدوده کاربر انجام نشد."); }
+  return json({data:await safeUser(env,id)});
+}
 async function createOrgUnit(request, env, user) {
   let body;
   try { body = await readJson(request); } catch (e) {
@@ -477,6 +516,11 @@ async function route(request, env) {
   if (url.pathname === "/api/v1/users" && method === "POST") {
     if (!user) return fail(401,"unauthenticated","برای ایجاد کاربر وارد سامانه شو.");
     return createUser(request,env,user);
+  }
+  const userAccessRoute=url.pathname.match(new RegExp("^/api/v1/users/([^/]+)$"));
+  if(userAccessRoute&&method==="PATCH"){
+    if(!user)return fail(401,"unauthenticated","برای ویرایش دسترسی کاربر وارد سامانه شو.");
+    return updateUserAccess(request,env,user,userAccessRoute[1]);
   }
   const userRoute=url.pathname.match(new RegExp("^/api/v1/users/([^/]+)/(activate|deactivate)$"));
   if(userRoute&&method==="POST"){
