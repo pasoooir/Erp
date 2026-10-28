@@ -70,6 +70,16 @@
             <p class="form-hint">برای مدیر سراسری محدوده لازم نیست؛ سایر نقش‌ها حداقل به یک واحد فعال نیاز دارند.</p>
             <button class="button" type="submit">ایجاد کاربر</button>
           </form>
+          <section id="userAccessPanel" class="panel hidden" aria-labelledby="accessUserTitle">
+            <div class="section-heading"><div><p class="eyebrow">کنترل دسترسی</p><h3 id="accessUserTitle">ویرایش نقش و محدوده</h3></div></div>
+            <form id="userAccessForm" class="form user-form">
+              <input name="id" type="hidden">
+              <label>نقش جدید<select name="role" required><option value="org_manager">مدیر واحد سازمانی</option><option value="operator">اپراتور</option><option value="reader">مشاهده‌گر</option><option value="admin">مدیر سراسری</option></select></label>
+              <label class="scope-field">محدوده‌های دسترسی<select name="scope_ids" multiple size="4" aria-label="محدوده‌های دسترسی برای ویرایش"></select></label>
+              <p class="form-hint">برای مدیر سراسری محدوده لازم نیست؛ سایر نقش‌ها حداقل یک محدوده فعال نیاز دارند.</p>
+              <div class="button-row"><button class="button" type="submit">ذخیره دسترسی</button><button id="cancelUserAccessButton" class="button secondary" type="button">لغو</button></div>
+            </form>
+          </section>
           <div class="table-wrap users-table-wrap"><table><thead><tr><th>نام</th><th>ایمیل</th><th>نقش</th><th>محدوده‌ها</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody id="usersTable"></tbody></table></div>
         </section>
         <section id="auditPanel" class="panel hidden">
