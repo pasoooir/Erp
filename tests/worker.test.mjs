@@ -76,7 +76,7 @@ test("authenticated admin can create and list organization units; duplicate code
   const cookie=cookieFrom(bootstrap);
   const created=await call("/api/v1/org-units",{...json({code:"acme",name:"شرکت نمونه",unit_type:"company"}),headers:{"content-type":"application/json",cookie}});
   assert.equal(created.status,201,await created.text());
-  const data=(await parse(created)).data;
+  const data=(await created.json()).data;
   assert.equal(data.code,"ACME");
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='org_unit.created'").get().n,1);
   const list=await call("/api/v1/org-units",{headers:{cookie}});
