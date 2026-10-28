@@ -152,8 +152,8 @@ const defaultState = {
     { id: 'acc-3', type: 'asset', account: 'Inventory', amount: 17500000, date: '2026-10-22' }
   ],
   auditLogs: [
-    { id: 'log-1', action: 'login', user: 'Sajjad Rahimi', createdAt: '2026-10-28T08:00:00.000Z' },
-    { id: 'log-2', action: 'stock_updated', user: 'Farid Nouri', createdAt: '2026-10-28T09:10:00.000Z' }
+    { id: 'log-1', action: 'login', user: 'Sajjad Rahimi', detail: 'User signed in successfully', createdAt: '2026-10-28T08:00:00.000Z' },
+    { id: 'log-2', action: 'stock_updated', user: 'Farid Nouri', detail: 'Inventory adjustment applied', createdAt: '2026-10-28T09:10:00.000Z' }
   ]
 };
 
@@ -166,8 +166,12 @@ function ensureStore() {
 
 function readState() {
   ensureStore();
-  const raw = fs.readFileSync(STORE_PATH, 'utf8');
-  return JSON.parse(raw || '{}');
+  try {
+    const raw = fs.readFileSync(STORE_PATH, 'utf8');
+    return JSON.parse(raw || '{}');
+  } catch (error) {
+    return { ...defaultState };
+  }
 }
 
 function writeState(state) {
@@ -184,6 +188,11 @@ function sendJson(res, statusCode, payload) {
     'Cache-Control': 'no-store'
   });
   res.end(JSON.stringify(payload));
+}
+
+function toNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function getUserFromRequest(req) {
@@ -257,7 +266,8 @@ function parseBody(req) {
 }
 
 function serveStaticFile(filePath, res) {
-  const safePath = path.normalize(filePath).replace(/^\.+/, '');
+  const sanitized = String(filePath || '').replace(/^\/+/, '');
+  const safePath = path.normalize(sanitized).replace(/^\.\./, '');
   const actualPath = path.join(PUBLIC_DIR, safePath);
 
   if (!actualPath.startsWith(PUBLIC_DIR)) {
@@ -285,13 +295,13 @@ function serveStaticFile(filePath, res) {
 }
 
 function getDashboardSnapshot(state) {
-  const totalInventory = state.products.reduce((sum, product) => sum + product.stock, 0);
-  const inventoryValue = state.products.reduce((sum, product) => sum + (product.stock * product.unitCost), 0);
-  const revenue = state.invoices.reduce((sum, invoice) => sum + Number(invoice.total || 0), 0);
+  const totalInventory = state.products.reduce((sum, product) => sum + toNumber(product.stock, 0), 0);
+  const inventoryValue = state.products.reduce((sum, product) => sum + (toNumber(product.stock, 0) * toNumber(product.unitCost, 0)), 0);
+  const revenue = state.invoices.reduce((sum, invoice) => sum + toNumber(invoice.total || 0, 0), 0);
   const expenses = state.accountingEntries
     .filter((entry) => entry.type === 'expense')
-    .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
-  const openOrders = state.salesOrders.filter((order) => order.status !== 'paid' && order.status !== 'shipped').length;
+    .reduce((sum, entry) => sum + toNumber(entry.amount || 0, 0), 0);
+  const openOrders = state.salesOrders.filter((order) => !['paid', 'shipped'].includes(order.status)).length;
 
   return {
     summary: {
@@ -305,67 +315,62 @@ function getDashboardSnapshot(state) {
       openOrders
     },
     latestActivity: state.auditLogs.slice(0, 6),
-    lowStock: state.products.filter((product) => product.stock <= product.minStock)
+    lowStock: state.products.filter((product) => toNumber(product.stock, 0) <= toNumber(product.minStock, 0))
   };
 }
 
-const routes = {
-  GET: {
-    '/api/health': (req, res) => {
-      sendJson(res, 200, { ok: true, message: 'ERP engine is running.', time: new Date().toISOString() });
-    },
-    '/api/dashboard': requireAuth,
-    '/api/organizations': requireAuth,
-    '/api/users': requireAuth,
-    '/api/products': requireAuth,
-    '/api/purchase-orders': requireAuth,
-    '/api/sales-orders': requireAuth,
-    '/api/invoices': requireAuth,
-    '/api/finance': requireAuth,
-    '/api/audit': requireAuth,
-    '/api/warehouse': requireAuth
-  },
-  POST: {
-    '/api/auth/login': (req, res) => {
-      parseBody(req).then((payload) => {
-        const email = String(payload.email || '').trim().toLowerCase();
-        const password = String(payload.password || '');
-        const state = readState();
-        const user = state.users.find((item) => item.email === email && item.password === password && item.status === 'active');
+function normalizeProduct(payload, state) {
+  return {
+    id: payload.id || generateId('prod'),
+    sku: payload.sku || `SKU-${Date.now()}`,
+    name: payload.name || 'New Product',
+    category: payload.category || 'General',
+    unit: payload.unit || 'pcs',
+    unitCost: toNumber(payload.unitCost, 0),
+    salePrice: toNumber(payload.salePrice, 0),
+    stock: toNumber(payload.stock, 0),
+    minStock: toNumber(payload.minStock, 0),
+    warehouseId: payload.warehouseId || state.warehouses[0]?.id || 'wh-1'
+  };
+}
 
-        if (!user) {
-          sendJson(res, 401, { ok: false, message: 'Invalid credentials.' });
-          return;
-        }
+function normalizeOrganization(payload) {
+  return {
+    id: payload.id || generateId('org'),
+    name: payload.name || 'New Organization',
+    status: payload.status || 'active',
+    country: payload.country || 'IR',
+    city: payload.city || 'Tehran',
+    registeredNo: payload.registeredNo || `ORG-${Date.now()}`
+  };
+}
 
-        const token = crypto.randomBytes(24).toString('hex');
-        user.token = token;
-        addAudit(state, 'login', 'User signed in successfully', user.name);
-        writeState(state);
-        sendJson(res, 200, { ok: true, token, user: normalizeUser(user) });
-      }).catch((error) => {
-        sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
-      });
-    },
-    '/api/organizations': requireAuth,
-    '/api/users': requireAuth,
-    '/api/products': requireAuth,
-    '/api/purchase-orders': requireAuth,
-    '/api/sales-orders': requireAuth,
-    '/api/warehouse': requireAuth
-  },
-  PATCH: {
-    '/api/products': requireAuth,
-    '/api/users': requireAuth
-  }
-};
+function normalizeUserPayload(payload, state) {
+  return {
+    id: payload.id || generateId('user'),
+    name: payload.name || 'New User',
+    email: String(payload.email || '').trim().toLowerCase(),
+    password: payload.password || 'changeme',
+    role: payload.role || 'operator',
+    department: payload.department || 'Operations',
+    organizationId: payload.organizationId || state.organizations[0]?.id || 'org-1',
+    status: payload.status || 'active',
+    token: ''
+  };
+}
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = url.pathname;
+  const method = req.method.toUpperCase();
 
   if (pathname === '/' || pathname === '/index.html') {
     serveStaticFile('index.html', res);
+    return;
+  }
+
+  if (pathname === '/styles.css' || pathname === '/app.js' || pathname === '/favicon.ico') {
+    serveStaticFile(pathname.replace(/^\//, ''), res);
     return;
   }
 
@@ -374,10 +379,31 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const method = req.method.toUpperCase();
+  if (pathname === '/api/health' && method === 'GET') {
+    sendJson(res, 200, { ok: true, message: 'ERP engine is running.', time: new Date().toISOString() });
+    return;
+  }
 
   if (pathname === '/api/auth/login' && method === 'POST') {
-    routes.POST[pathname](req, res);
+    parseBody(req).then((payload) => {
+      const email = String(payload.email || '').trim().toLowerCase();
+      const password = String(payload.password || '');
+      const state = readState();
+      const user = state.users.find((item) => item.email === email && item.password === password && item.status === 'active');
+
+      if (!user) {
+        sendJson(res, 401, { ok: false, message: 'Invalid credentials.' });
+        return;
+      }
+
+      const token = crypto.randomBytes(24).toString('hex');
+      user.token = token;
+      addAudit(state, 'login', 'User signed in successfully', user.name);
+      writeState(state);
+      sendJson(res, 200, { ok: true, token, user: normalizeUser(user) });
+    }).catch((error) => {
+      sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
+    });
     return;
   }
 
@@ -441,7 +467,7 @@ const server = http.createServer((req, res) => {
     requireAuth(req, res, () => {
       const state = readState();
       const totals = state.accountingEntries.reduce((acc, entry) => {
-        acc[entry.type] = (acc[entry.type] || 0) + Number(entry.amount || 0);
+        acc[entry.type] = (acc[entry.type] || 0) + toNumber(entry.amount || 0, 0);
         return acc;
       }, {});
       sendJson(res, 200, { ok: true, data: { totals, entries: state.accountingEntries } });
@@ -469,7 +495,7 @@ const server = http.createServer((req, res) => {
     requireAuth(req, res, () => {
       parseBody(req).then((payload) => {
         const state = readState();
-        const item = { id: generateId('org'), name: payload.name || 'New Organization', status: 'active', country: payload.country || 'IR', city: payload.city || 'Tehran' };
+        const item = normalizeOrganization(payload);
         state.organizations.push(item);
         addAudit(state, 'organization_created', item.name, req.user.name);
         writeState(state);
@@ -485,18 +511,7 @@ const server = http.createServer((req, res) => {
     requireAuth(req, res, () => {
       parseBody(req).then((payload) => {
         const state = readState();
-        const user = {
-          id: generateId('user'),
-          name: payload.name || 'New User',
-          email: (payload.email || '').toLowerCase(),
-          password: payload.password || 'changeme',
-          role: payload.role || 'operator',
-          department: payload.department || 'Operations',
-          organizationId: payload.organizationId || state.organizations[0]?.id || 'org-1',
-          status: 'active',
-          token: ''
-        };
-
+        const user = normalizeUserPayload(payload, state);
         state.users.push(user);
         addAudit(state, 'user_created', user.name, req.user.name);
         writeState(state);
@@ -512,46 +527,11 @@ const server = http.createServer((req, res) => {
     requireAuth(req, res, () => {
       parseBody(req).then((payload) => {
         const state = readState();
-        const product = {
-          id: generateId('prod'),
-          sku: payload.sku || `SKU-${Date.now()}`,
-          name: payload.name || 'New Product',
-          category: payload.category || 'General',
-          unit: payload.unit || 'pcs',
-          unitCost: Number(payload.unitCost || 0),
-          salePrice: Number(payload.salePrice || 0),
-          stock: Number(payload.stock || 0),
-          minStock: Number(payload.minStock || 0),
-          warehouseId: payload.warehouseId || state.warehouses[0]?.id || 'wh-1'
-        };
+        const product = normalizeProduct(payload, state);
         state.products.push(product);
         addAudit(state, 'product_created', product.name, req.user.name);
         writeState(state);
         sendJson(res, 201, { ok: true, data: product });
-      }).catch((error) => {
-        sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
-      });
-    });
-    return;
-  }
-
-  if (pathname === '/api/products' && method === 'PATCH') {
-    requireAuth(req, res, () => {
-      parseBody(req).then((payload) => {
-        const state = readState();
-        const product = state.products.find((item) => item.id === payload.id);
-        if (!product) {
-          sendJson(res, 404, { ok: false, message: 'Product not found.' });
-          return;
-        }
-
-        Object.keys(payload).forEach((key) => {
-          if (key !== 'id') product[key] = payload[key];
-        });
-
-        addAudit(state, 'product_updated', product.name, req.user.name);
-        writeState(state);
-        sendJson(res, 200, { ok: true, data: product });
       }).catch((error) => {
         sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
       });
@@ -564,12 +544,12 @@ const server = http.createServer((req, res) => {
       parseBody(req).then((payload) => {
         const state = readState();
         const order = {
-          id: generateId('po'),
+          id: payload.id || generateId('po'),
           vendorId: payload.vendorId || 'ven-1',
           vendorName: payload.vendorName || 'Supplier',
           status: payload.status || 'draft',
-          total: Number(payload.total || 0),
-          createdAt: new Date().toISOString()
+          total: toNumber(payload.total, 0),
+          createdAt: payload.createdAt || new Date().toISOString()
         };
         state.purchaseOrders.push(order);
         addAudit(state, 'purchase_order_created', order.id, req.user.name);
@@ -587,12 +567,12 @@ const server = http.createServer((req, res) => {
       parseBody(req).then((payload) => {
         const state = readState();
         const order = {
-          id: generateId('so'),
+          id: payload.id || generateId('so'),
           customerId: payload.customerId || 'cust-1',
           customerName: payload.customerName || 'Customer',
           status: payload.status || 'draft',
-          total: Number(payload.total || 0),
-          createdAt: new Date().toISOString()
+          total: toNumber(payload.total, 0),
+          createdAt: payload.createdAt || new Date().toISOString()
         };
         state.salesOrders.push(order);
         addAudit(state, 'sales_order_created', order.id, req.user.name);
@@ -614,13 +594,230 @@ const server = http.createServer((req, res) => {
           sendJson(res, 404, { ok: false, message: 'Product not found.' });
           return;
         }
-        product.stock = Number(product.stock || 0) + Number(payload.delta || 0);
+        product.stock = toNumber(product.stock, 0) + toNumber(payload.delta, 0);
         addAudit(state, 'inventory_adjusted', `${product.name}: ${payload.delta}`, req.user.name);
         writeState(state);
         sendJson(res, 200, { ok: true, data: product });
       }).catch((error) => {
         sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
       });
+    });
+    return;
+  }
+
+  if (pathname === '/api/organizations' && method === 'PATCH') {
+    requireAuth(req, res, () => {
+      parseBody(req).then((payload) => {
+        const state = readState();
+        const item = state.organizations.find((org) => org.id === payload.id);
+        if (!item) {
+          sendJson(res, 404, { ok: false, message: 'Organization not found.' });
+          return;
+        }
+        Object.keys(payload).forEach((key) => {
+          if (key !== 'id') item[key] = payload[key];
+        });
+        addAudit(state, 'organization_updated', item.name, req.user.name);
+        writeState(state);
+        sendJson(res, 200, { ok: true, data: item });
+      }).catch((error) => {
+        sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
+      });
+    });
+    return;
+  }
+
+  if (pathname === '/api/users' && method === 'PATCH') {
+    requireAuth(req, res, () => {
+      parseBody(req).then((payload) => {
+        const state = readState();
+        const user = state.users.find((item) => item.id === payload.id);
+        if (!user) {
+          sendJson(res, 404, { ok: false, message: 'User not found.' });
+          return;
+        }
+        Object.keys(payload).forEach((key) => {
+          if (key !== 'id') user[key] = payload[key];
+        });
+        addAudit(state, 'user_updated', user.name, req.user.name);
+        writeState(state);
+        sendJson(res, 200, { ok: true, data: normalizeUser(user) });
+      }).catch((error) => {
+        sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
+      });
+    });
+    return;
+  }
+
+  if (pathname === '/api/products' && method === 'PATCH') {
+    requireAuth(req, res, () => {
+      parseBody(req).then((payload) => {
+        const state = readState();
+        const product = state.products.find((item) => item.id === payload.id);
+        if (!product) {
+          sendJson(res, 404, { ok: false, message: 'Product not found.' });
+          return;
+        }
+        Object.keys(payload).forEach((key) => {
+          if (key !== 'id') product[key] = payload[key];
+        });
+        addAudit(state, 'product_updated', product.name, req.user.name);
+        writeState(state);
+        sendJson(res, 200, { ok: true, data: product });
+      }).catch((error) => {
+        sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
+      });
+    });
+    return;
+  }
+
+  if (pathname === '/api/purchase-orders' && method === 'PATCH') {
+    requireAuth(req, res, () => {
+      parseBody(req).then((payload) => {
+        const state = readState();
+        const item = state.purchaseOrders.find((entry) => entry.id === payload.id);
+        if (!item) {
+          sendJson(res, 404, { ok: false, message: 'Purchase order not found.' });
+          return;
+        }
+        Object.keys(payload).forEach((key) => {
+          if (key !== 'id') item[key] = payload[key];
+        });
+        addAudit(state, 'purchase_order_updated', item.id, req.user.name);
+        writeState(state);
+        sendJson(res, 200, { ok: true, data: item });
+      }).catch((error) => {
+        sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
+      });
+    });
+    return;
+  }
+
+  if (pathname === '/api/sales-orders' && method === 'PATCH') {
+    requireAuth(req, res, () => {
+      parseBody(req).then((payload) => {
+        const state = readState();
+        const item = state.salesOrders.find((entry) => entry.id === payload.id);
+        if (!item) {
+          sendJson(res, 404, { ok: false, message: 'Sales order not found.' });
+          return;
+        }
+        Object.keys(payload).forEach((key) => {
+          if (key !== 'id') item[key] = payload[key];
+        });
+        addAudit(state, 'sales_order_updated', item.id, req.user.name);
+        writeState(state);
+        sendJson(res, 200, { ok: true, data: item });
+      }).catch((error) => {
+        sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
+      });
+    });
+    return;
+  }
+
+  if (pathname === '/api/warehouse' && method === 'PATCH') {
+    requireAuth(req, res, () => {
+      parseBody(req).then((payload) => {
+        const state = readState();
+        const product = state.products.find((item) => item.id === payload.productId);
+        if (!product) {
+          sendJson(res, 404, { ok: false, message: 'Product not found.' });
+          return;
+        }
+        product.stock = toNumber(payload.stock, product.stock);
+        product.minStock = toNumber(payload.minStock, product.minStock);
+        product.warehouseId = payload.warehouseId || product.warehouseId;
+        addAudit(state, 'inventory_edited', `${product.name} warehouse details updated`, req.user.name);
+        writeState(state);
+        sendJson(res, 200, { ok: true, data: product });
+      }).catch((error) => {
+        sendJson(res, 400, { ok: false, message: error.message || 'Bad request' });
+      });
+    });
+    return;
+  }
+
+  if (pathname.startsWith('/api/organizations/') && method === 'DELETE') {
+    requireAuth(req, res, () => {
+      const state = readState();
+      const id = pathname.split('/').at(-1);
+      const index = state.organizations.findIndex((item) => item.id === id);
+      if (index === -1) {
+        sendJson(res, 404, { ok: false, message: 'Organization not found.' });
+        return;
+      }
+      const [removed] = state.organizations.splice(index, 1);
+      addAudit(state, 'organization_deleted', removed.name, req.user.name);
+      writeState(state);
+      sendJson(res, 200, { ok: true, data: removed });
+    });
+    return;
+  }
+
+  if (pathname.startsWith('/api/users/') && method === 'DELETE') {
+    requireAuth(req, res, () => {
+      const state = readState();
+      const id = pathname.split('/').at(-1);
+      const index = state.users.findIndex((item) => item.id === id);
+      if (index === -1) {
+        sendJson(res, 404, { ok: false, message: 'User not found.' });
+        return;
+      }
+      const [removed] = state.users.splice(index, 1);
+      addAudit(state, 'user_deleted', removed.name, req.user.name);
+      writeState(state);
+      sendJson(res, 200, { ok: true, data: removed });
+    });
+    return;
+  }
+
+  if (pathname.startsWith('/api/products/') && method === 'DELETE') {
+    requireAuth(req, res, () => {
+      const state = readState();
+      const id = pathname.split('/').at(-1);
+      const index = state.products.findIndex((item) => item.id === id);
+      if (index === -1) {
+        sendJson(res, 404, { ok: false, message: 'Product not found.' });
+        return;
+      }
+      const [removed] = state.products.splice(index, 1);
+      addAudit(state, 'product_deleted', removed.name, req.user.name);
+      writeState(state);
+      sendJson(res, 200, { ok: true, data: removed });
+    });
+    return;
+  }
+
+  if (pathname.startsWith('/api/purchase-orders/') && method === 'DELETE') {
+    requireAuth(req, res, () => {
+      const state = readState();
+      const id = pathname.split('/').at(-1);
+      const index = state.purchaseOrders.findIndex((item) => item.id === id);
+      if (index === -1) {
+        sendJson(res, 404, { ok: false, message: 'Purchase order not found.' });
+        return;
+      }
+      const [removed] = state.purchaseOrders.splice(index, 1);
+      addAudit(state, 'purchase_order_deleted', removed.id, req.user.name);
+      writeState(state);
+      sendJson(res, 200, { ok: true, data: removed });
+    });
+    return;
+  }
+
+  if (pathname.startsWith('/api/sales-orders/') && method === 'DELETE') {
+    requireAuth(req, res, () => {
+      const state = readState();
+      const id = pathname.split('/').at(-1);
+      const index = state.salesOrders.findIndex((item) => item.id === id);
+      if (index === -1) {
+        sendJson(res, 404, { ok: false, message: 'Sales order not found.' });
+        return;
+      }
+      const [removed] = state.salesOrders.splice(index, 1);
+      addAudit(state, 'sales_order_deleted', removed.id, req.user.name);
+      writeState(state);
+      sendJson(res, 200, { ok: true, data: removed });
     });
     return;
   }
