@@ -40,6 +40,13 @@ test("dashboard renders, searches, filters, shows detail, exports CSV and remain
   await result.waitFor();
   await result.click();
   await page.locator("#detail").getByText("GOV-ORG-A-T1-DATA-T1").waitFor();
+  const prLink=page.locator("#detail a").filter({hasText:"Pull Request"});
+  await prLink.waitFor();
+  assert.equal(await prLink.getAttribute("href"),"https://github.com/pasoooir/Erp/pull/3");
+  const commitLink=page.locator("#detail a").filter({hasText:"Commit"});
+  await commitLink.waitFor();
+  assert.match(await commitLink.getAttribute("href"),/9eec3f05d8245edecfea4f22b2ee4a0368b49b45/);
+  await page.locator("#detail").getByText(/CI 40710837253 passed/).waitFor();
   await page.locator("#search").fill("");
   await page.locator("#levelFilter").selectOption("6");
   assert.equal(await page.locator("#results [data-result]").count(),250);
