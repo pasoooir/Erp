@@ -1,0 +1,37 @@
+name: ERP foundation checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "migrations/**"
+      - "tests/**"
+      - "wrangler.toml"
+      - "package.json"
+      - ".github/workflows/erp-foundation.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "migrations/**"
+      - "tests/**"
+      - "wrangler.toml"
+      - "package.json"
+      - ".github/workflows/erp-foundation.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-erp-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: npm run check
+      - name: Run Worker and D1 schema tests
+        run: npm test
