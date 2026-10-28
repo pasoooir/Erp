@@ -14,5 +14,5 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "erp-dev"
-database_id = "REPLACE_WITH_DEDICATED_DEVELOPMENT_D1_UUID"
+database_id = "00000000-0000-4000-8000-000000000001"
 migrations_dir = "migrations"
