@@ -330,7 +330,7 @@ async function route(request, env) {
     if (!user) return fail(401, "unauthenticated", "برای ایجاد واحد سازمانی وارد سامانه شو.");
     return createOrgUnit(request, env, user);
   }
-  const unitRoute = url.pathname.match(/^\\/api\\/v1\\/org-units\\/([^/]+)(?:\\/(activate|deactivate))?$/);
+  const unitRoute = url.pathname.match(new RegExp("^/api/v1/org-units/([^/]+)(?:/(activate|deactivate))?$"));
   if (unitRoute) {
     if (!user) return fail(401, "unauthenticated", "برای ادامه وارد سامانه شو.");
     const [, id, action] = unitRoute;
