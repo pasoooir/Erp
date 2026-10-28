@@ -38,7 +38,9 @@ jobs:
       - name: Run Worker and D1 schema unit tests
         run: npm test
       - name: Install Wrangler for local runtime integration
-        run: npm install --no-save --package-lock=false wrangler
+        run: npm install --no-save --package-lock=false wrangler playwright
+      - name: Install Chromium for UI integration
+        run: npx playwright install --with-deps chromium
       - name: Apply D1 migration to local SQLite
         run: CI=true npx wrangler d1 migrations apply erp-dev --local
       - name: Exercise Worker on local Cloudflare runtime
