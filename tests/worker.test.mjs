@@ -207,12 +207,13 @@ test("authenticated non-admin users cannot read or mutate organization data", as
   DB.sqlite.prepare("INSERT INTO users (id,email,display_name,password_hash) VALUES (?,?,?,?)").run(userId,"reader@example.com","Reader","unused-test-hash");
   DB.sqlite.prepare("INSERT INTO user_roles (user_id,role_id) VALUES (?,?)").run(userId,roleId);
   DB.sqlite.prepare("INSERT INTO sessions (token_hash,user_id,expires_at) VALUES (?,?,datetime('now','+1 hour'))").run(tokenHash,userId);
+  DB.sqlite.prepare("INSERT INTO org_units (id,code,name,unit_type,status,created_by) VALUES (?,?,?,?,?,?)").run("unit-reader-test","OUTSIDE","Outside","company","active",userId);
   const headers={"content-type":"application/json",cookie:"erp_session="+token};
   assert.equal((await call("/api/v1/auth/me",{headers})).status,200);
   assert.equal((await call("/api/v1/org-units",{headers})).status,403);
   assert.equal((await call("/api/v1/org-units",{...json({code:"ACME",name:"Company",unit_type:"company"}),headers})).status,403);
-  assert.equal((await call("/api/v1/org-units/fake-id",{...json({name:"Changed"}),method:"PATCH",headers})).status,403);
-  assert.equal((await call("/api/v1/org-units/fake-id/deactivate",{method:"POST",headers})).status,403);
+  assert.equal((await call("/api/v1/org-units/unit-reader-test",{...json({name:"Changed"}),method:"PATCH",headers})).status,403);
+  assert.equal((await call("/api/v1/org-units/unit-reader-test/deactivate",{method:"POST",headers})).status,403);
 });
 test("admin provisions scoped users and org managers cannot cross organization boundaries", async () => {
   const {call,DB}=harness();
