@@ -83,7 +83,7 @@
     const body=$("usersTable");body.replaceChildren();
     for(const user of users){
       const tr=document.createElement("tr");
-      for(const value of [user.display_name,user.email,String(user.roles||"").split(",").map(role=>roleLabels[role]||role).join("، ")||"—",new Intl.NumberFormat("fa-IR").format(Number(user.scope_count||0)),user.status==="active"?"فعال":"غیرفعال"]){
+      for(const value of [user.display_name,user.email,String(user.roles||"").split(",").map(role=>roleLabels[role]||role).join("، ")||"—",(user.scopes||(String(user.roles||"").split(",").includes("admin")?"سراسری":"—")),user.status==="active"?"فعال":"غیرفعال"]){
         const td=document.createElement("td");td.textContent=value;tr.appendChild(td);
       }
       const actions=document.createElement("td");actions.className="table-actions";
