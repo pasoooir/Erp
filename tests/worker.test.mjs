@@ -204,7 +204,7 @@ test("authenticated non-admin users cannot read or mutate organization data", as
   const token="A".repeat(43);
   const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(token));
   const tokenHash=[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
-  DB.sqlite.prepare("INSERT INTO roles (id,name,description) VALUES (?,?,?)").run(roleId,"reader","read-only test role");
+  DB.sqlite.prepare("INSERT INTO roles (id,name) VALUES (?,?)").run(roleId,"reader");
   DB.sqlite.prepare("INSERT INTO users (id,email,display_name,password_hash) VALUES (?,?,?,?)").run(userId,"reader@example.com","Reader","unused-test-hash");
   DB.sqlite.prepare("INSERT INTO user_roles (user_id,role_id) VALUES (?,?)").run(userId,roleId);
   DB.sqlite.prepare("INSERT INTO sessions (token_hash,user_id,expires_at) VALUES (?,?,datetime('now','+1 hour'))").run(tokenHash,userId);
