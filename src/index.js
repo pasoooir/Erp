@@ -214,9 +214,10 @@ async function safeUser(env, id) {
   return env.DB.prepare(`SELECT u.id, u.email, u.display_name, u.status,
       GROUP_CONCAT(DISTINCT r.name) AS roles,
       GROUP_CONCAT(DISTINCT s.org_unit_id) AS scope_ids,
+      GROUP_CONCAT(DISTINCT ou.code || ' — ' || ou.name) AS scopes,
       COUNT(DISTINCT s.org_unit_id) AS scope_count
     FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id LEFT JOIN roles r ON r.id=ur.role_id
-    LEFT JOIN user_org_scopes s ON s.user_id=u.id
+    LEFT JOIN user_org_scopes s ON s.user_id=u.id LEFT JOIN org_units ou ON ou.id=s.org_unit_id
     WHERE u.id=? GROUP BY u.id`).bind(id).first();
 }
 async function listUsers(env, user) {
