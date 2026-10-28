@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { chromium } from "playwright";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const wrangler=path.join(root,"node_modules","wrangler","bin","wrangler.js");
@@ -17,59 +18,101 @@ async function waitForServer() {
   const deadline=Date.now()+45_000;
   while(Date.now()<deadline) {
     if(child.exitCode!==null)throw new Error("Wrangler exited before readiness: "+output);
-    try {
-      const response=await fetch(base+"/api/health");
-      if(response.ok)return;
-    } catch {}
+    try { const response=await fetch(base+"/api/health"); if(response.ok)return; } catch {}
     await new Promise(resolve=>setTimeout(resolve,250));
   }
   throw new Error("Wrangler did not become ready: "+output);
 }
-async function json(pathname,options={}) {
+async function api(pathname,options={}) {
   const response=await fetch(base+pathname,options);
   let body;
   try{body=await response.json()}catch{throw new Error("Non-JSON response for "+pathname+": "+response.status)}
   return {response,body};
 }
 const post=(data,headers={})=>({method:"POST",headers:{"content-type":"application/json",...headers},body:JSON.stringify(data)});
+const password="long-ci-password-123";
+let browser;
 try {
   await waitForServer();
-  const health=await json("/api/health");
+  const health=await api("/api/health");
   assert.equal(health.body.data.database,"connected");
-  const status=await json("/api/v1/auth/status");
+  const status=await api("/api/v1/auth/status");
   assert.equal(status.body.data.bootstrap_required,true);
-  const denied=await json("/api/v1/auth/bootstrap",post({email:"admin@example.com",display_name:"Admin",password:"long-ci-password-123"}));
-  assert.equal(denied.response.status,403);
-  const bootstrap=await json("/api/v1/auth/bootstrap",post(
-    {email:"admin@example.com",display_name:"Admin CI",password:"long-ci-password-123"},
+
+  browser=await chromium.launch({headless:true});
+  const page=await browser.newPage({viewport:{width:1280,height:900}});
+  const pageErrors=[];page.on("pageerror",error=>pageErrors.push(error.message));
+  await page.goto(base+"/");
+  await page.locator("#bootstrapForm").waitFor({state:"visible"});
+  await page.locator('input[name="bootstrap_secret"]').fill(secret);
+  await page.locator('input[name="display_name"]').fill("مدیر آزمایش");
+  await page.locator('input[name="email"]').fill("admin@example.com");
+  await page.locator('input[name="password"]').fill(password);
+  await page.locator("#bootstrapForm button[type=submit]").click();
+  await page.locator("#appPanel").waitFor({state:"visible"});
+  assert.equal(await page.locator("html").getAttribute("dir"),"rtl");
+  assert.equal(await page.locator("html").getAttribute("lang"),"fa");
+  await page.locator("#unitForm input[name=code]").fill("ACME");
+  await page.locator("#unitForm input[name=name]").fill("شرکت نمونه");
+  await page.locator("#unitForm select[name=unit_type]").selectOption("company");
+  await page.locator("#unitForm button[type=submit]").click();
+  await page.locator("#unitsTable tr").filter({hasText:"ACME"}).waitFor();
+  const parentSelect=page.locator("#unitForm select[name=parent_id]");
+  const options=await parentSelect.locator("option").evaluateAll(items=>items.map(option=>({value:option.value,text:option.textContent||""})));
+  const companyOption=options.find(option=>option.value&&option.text.includes("ACME"));
+  assert.ok(companyOption,"Company should be selectable as a parent");
+  await page.locator("#unitForm input[name=code]").fill("SITE1");
+  await page.locator("#unitForm input[name=name]").fill("کارخانه مرکزی");
+  await page.locator("#unitForm select[name=unit_type]").selectOption("site");
+  await parentSelect.selectOption(companyOption.value);
+  await page.locator("#unitForm button[type=submit]").click();
+  await page.locator("#unitsTable tr").filter({hasText:"SITE1"}).waitFor();
+  assert.equal(await page.locator("#unitsTable tr").count(),2);
+  await page.setViewportSize({width:390,height:844});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"mobile page should not overflow horizontally");
+  assert.deepEqual(pageErrors,[]);
+
+  const badSecret=await api("/api/v1/auth/bootstrap",post(
+    {email:"second@example.com",display_name:"Second",password},
+    {"x-bootstrap-secret":"wrong-secret"}
+  ));
+  assert.equal(badSecret.response.status,403);
+  const secondBootstrap=await api("/api/v1/auth/bootstrap",post(
+    {email:"second@example.com",display_name:"Second",password},
     {"x-bootstrap-secret":secret}
   ));
-  assert.equal(bootstrap.response.status,201,JSON.stringify(bootstrap.body));
-  const cookie=bootstrap.response.headers.get("set-cookie")?.split(";")[0];
+  assert.equal(secondBootstrap.response.status,409);
+
+  const wrong=await api("/api/v1/auth/login",post({email:"admin@example.com",password:"wrong-password-123"}));
+  assert.equal(wrong.response.status,401);
+  const login=await api("/api/v1/auth/login",post({email:"admin@example.com",password}));
+  assert.equal(login.response.status,200);
+  const cookie=login.response.headers.get("set-cookie")?.split(";")[0];
   assert.ok(cookie&&cookie.startsWith("erp_session="));
-  const me=await json("/api/v1/auth/me",{headers:{cookie}});
-  assert.equal(me.response.status,200);
+  const me=await api("/api/v1/auth/me",{headers:{cookie}});
   assert.deepEqual(me.body.data.roles,["admin"]);
-  const company=await json("/api/v1/org-units",post({code:"ACME",name:"شرکت نمونه",unit_type:"company"},{cookie}));
-  assert.equal(company.response.status,201,JSON.stringify(company.body));
-  const site=await json("/api/v1/org-units",post({code:"SITE1",name:"کارخانه مرکزی",unit_type:"site",parent_id:company.body.data.id},{cookie}));
-  assert.equal(site.response.status,201,JSON.stringify(site.body));
-  const invalidParent=await json("/api/v1/org-units",post({code:"POS1",name:"مدیر خط",unit_type:"position",parent_id:site.body.data.id},{cookie}));
+  const listed=await api("/api/v1/org-units",{headers:{cookie}});
+  assert.equal(listed.body.meta.count,2);
+  const invalidParent=await api("/api/v1/org-units",post({code:"POS1",name:"سمت آزمایشی",unit_type:"position",parent_id:listed.body.data.find(row=>row.code==="SITE1").id},{cookie}));
   assert.equal(invalidParent.response.status,400);
-  const duplicate=await json("/api/v1/org-units",post({code:"ACME",name:"تکراری",unit_type:"company"},{cookie}));
+  const duplicate=await api("/api/v1/org-units",post({code:"ACME",name:"تکراری",unit_type:"company"},{cookie}));
   assert.equal(duplicate.response.status,409);
-  const list=await json("/api/v1/org-units",{headers:{cookie}});
-  assert.equal(list.response.status,200);
-  assert.equal(list.body.meta.count,2);
-  const logout=await json("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
-  assert.equal(logout.response.status,200);
-  const afterLogout=await json("/api/v1/auth/me",{headers:{cookie}});
-  assert.equal(afterLogout.response.status,401);
-  console.log("Worker runtime smoke passed: health, D1 migration, bootstrap, session, hierarchy, uniqueness and logout.");
+  await api("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
+  assert.equal((await api("/api/v1/auth/me",{headers:{cookie}})).response.status,401);
+
+  await page.locator("#logoutButton").click();
+  await page.locator("#loginForm").waitFor({state:"visible"});
+  await page.locator('input[name="email"]').fill("admin@example.com");
+  await page.locator('input[name="password"]').fill(password);
+  await page.locator("#loginForm button[type=submit]").click();
+  await page.locator("#appPanel").waitFor({state:"visible"});
+  assert.deepEqual(pageErrors,[]);
+  console.log("Worker + Chromium smoke passed: D1 migration, bootstrap, login/logout, sessions, role checks, org hierarchy, uniqueness, RTL UI and mobile layout.");
 } catch(error) {
   console.error(error);
   process.exitCode=1;
 } finally {
+  await browser?.close();
   child.kill("SIGTERM");
   await new Promise(resolve=>{if(child.exitCode!==null||child.signalCode!==null)return resolve();child.once("exit",resolve);setTimeout(()=>{child.kill("SIGKILL");resolve()},3000).unref();});
 }
