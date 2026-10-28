@@ -224,6 +224,75 @@ async function createOrgUnit(request, env, user) {
   }
   return json({ data: { id, parent_id: parentId, code, name, unit_type: unitType, status: "active" } }, 201);
 }
+async function updateOrgUnit(request, env, user, id) {
+  if (!user.roles.includes("admin")) return fail(403, "forbidden", "برای ویرایش واحد سازمانی مجوز مدیر لازم است.");
+  let body;
+  try { body = await readJson(request); } catch (e) {
+    return fail(e.message === "too_large" ? 413 : 400, e.message === "too_large" ? "request_too_large" : e.message === "content_type" ? "content_type_required" : "invalid_json", "درخواست معتبر نیست.");
+  }
+  if (Object.keys(body).some(key => !["name", "parent_id"].includes(key)))
+    return fail(400, "validation_failed", "فقط نام و واحد والد قابل ویرایش هستند.");
+  const existing = await env.DB.prepare("SELECT id, parent_id, code, name, unit_type, status FROM org_units WHERE id=?").bind(id).first();
+  if (!existing) return fail(404, "org_unit_not_found", "واحد سازمانی پیدا نشد.");
+  if (existing.status !== "active") return fail(409, "org_unit_inactive", "ابتدا واحد سازمانی را فعال کنید.");
+  const name = body.name === undefined ? existing.name : String(body.name || "").trim();
+  const parentId = body.parent_id === undefined ? existing.parent_id : (body.parent_id == null || body.parent_id === "" ? null : String(body.parent_id));
+  if (!name || name.length > 120) return fail(400, "validation_failed", "نام واحد الزامی است و حداکثر ۱۲۰ نویسه دارد.");
+  if (!parentId && existing.unit_type !== "company") return fail(400, "parent_required", "برای این نوع واحد باید واحد والد مشخص شود.");
+  if (parentId) {
+    const parent = await env.DB.prepare("SELECT id, unit_type, status FROM org_units WHERE id=?").bind(parentId).first();
+    if (!parent || parent.status !== "active") return fail(400, "invalid_parent", "واحد والد وجود ندارد یا فعال نیست.");
+    if (!ALLOWED_CHILD_TYPES[existing.unit_type].has(parent.unit_type)) return fail(400, "invalid_parent_type", "نوع واحد والد برای این ساختار مجاز نیست.");
+    if (parentId === id) return fail(400, "hierarchy_cycle", "واحد نمی‌تواند والد خودش باشد.");
+    const descendant = await env.DB.prepare(`WITH RECURSIVE descendants(id) AS (
+        SELECT id FROM org_units WHERE parent_id=?
+        UNION ALL
+        SELECT child.id FROM org_units child JOIN descendants d ON child.parent_id=d.id
+      ) SELECT id FROM descendants WHERE id=? LIMIT 1`).bind(id, parentId).first();
+    if (descendant) return fail(400, "hierarchy_cycle", "انتقال واحد به یکی از زیرمجموعه‌های خودش مجاز نیست.");
+  }
+  try {
+    const results = await env.DB.batch([
+      env.DB.prepare("UPDATE org_units SET parent_id=?, name=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='active'")
+        .bind(parentId, name, id),
+      env.DB.prepare("INSERT INTO audit_events (id, actor_user_id, action, entity_type, entity_id, metadata_json) SELECT ?, ?, 'org_unit.updated', 'org_unit', ?, ? WHERE changes()>0")
+        .bind(crypto.randomUUID(), user.id, id, JSON.stringify({ parent_id: parentId, name }))
+    ]);
+    if (Number(results[0]?.meta?.changes || 0) === 0) return fail(409, "org_unit_changed", "واحد هم‌زمان تغییر کرده است؛ فهرست را تازه‌سازی کنید.");
+  } catch {
+    return fail(500, "org_unit_update_failed", "ویرایش واحد سازمانی انجام نشد.");
+  }
+  const updated = await env.DB.prepare(`SELECT u.id, u.parent_id, p.name AS parent_name, u.code, u.name, u.unit_type, u.status, u.created_at, u.updated_at
+    FROM org_units u LEFT JOIN org_units p ON p.id=u.parent_id WHERE u.id=?`).bind(id).first();
+  return json({ data: updated });
+}
+async function setOrgUnitStatus(env, user, id, nextStatus) {
+  if (!user.roles.includes("admin")) return fail(403, "forbidden", "برای تغییر وضعیت واحد سازمانی مجوز مدیر لازم است.");
+  const existing = await env.DB.prepare("SELECT id, parent_id, code, name, unit_type, status FROM org_units WHERE id=?").bind(id).first();
+  if (!existing) return fail(404, "org_unit_not_found", "واحد سازمانی پیدا نشد.");
+  if (existing.status === nextStatus) return json({ data: existing, meta: { changed: false } });
+  if (nextStatus === "inactive") {
+    const children = await env.DB.prepare("SELECT COUNT(*) AS count FROM org_units WHERE parent_id=? AND status='active'").bind(id).first();
+    if (Number(children?.count || 0) > 0) return fail(409, "active_children_exist", "ابتدا واحدهای فعال زیرمجموعه را غیرفعال کنید.");
+  } else if (existing.parent_id) {
+    const parent = await env.DB.prepare("SELECT status FROM org_units WHERE id=?").bind(existing.parent_id).first();
+    if (!parent || parent.status !== "active") return fail(409, "parent_inactive", "برای فعال‌سازی، ابتدا واحد والد را فعال کنید.");
+  }
+  const action = nextStatus === "inactive" ? "org_unit.deactivated" : "org_unit.activated";
+  try {
+    const results = await env.DB.batch([
+      env.DB.prepare("UPDATE org_units SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?")
+        .bind(nextStatus, id, existing.status),
+      env.DB.prepare("INSERT INTO audit_events (id, actor_user_id, action, entity_type, entity_id, metadata_json) SELECT ?, ?, ?, 'org_unit', ?, ? WHERE changes()>0")
+        .bind(crypto.randomUUID(), user.id, action, id, JSON.stringify({ code: existing.code, previous_status: existing.status, status: nextStatus }))
+    ]);
+    if (Number(results[0]?.meta?.changes || 0) === 0) return fail(409, "org_unit_changed", "وضعیت واحد هم‌زمان تغییر کرده است؛ فهرست را تازه‌سازی کنید.");
+  } catch {
+    return fail(500, "org_unit_status_failed", "تغییر وضعیت واحد سازمانی انجام نشد.");
+  }
+  const updated = await env.DB.prepare("SELECT id, parent_id, code, name, unit_type, status, updated_at FROM org_units WHERE id=?").bind(id).first();
+  return json({ data: updated });
+}
 async function route(request, env) {
   const url = new URL(request.url);
   const method = request.method.toUpperCase();
@@ -261,6 +330,13 @@ async function route(request, env) {
     if (!user) return fail(401, "unauthenticated", "برای ایجاد واحد سازمانی وارد سامانه شو.");
     return createOrgUnit(request, env, user);
   }
+  const unitRoute = url.pathname.match(/^\\/api\\/v1\\/org-units\\/([^/]+)(?:\\/(activate|deactivate))?$/);
+  if (unitRoute) {
+    if (!user) return fail(401, "unauthenticated", "برای ادامه وارد سامانه شو.");
+    const [, id, action] = unitRoute;
+    if (method === "PATCH" && !action) return updateOrgUnit(request, env, user, id);
+    if (method === "POST" && action) return setOrgUnitStatus(env, user, id, action === "activate" ? "active" : "inactive");
+  }
   return fail(404, "not_found", "مسیر API پیدا نشد.");
 }
 export default {
@@ -279,7 +355,7 @@ export default {
     const cors = corsHeaders(request, env);
     if (cors === null) return fail(403, "origin_denied", "مبدأ درخواست مجاز نیست.");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: {
-      ...cors, "access-control-allow-methods": "GET, POST, OPTIONS",
+      ...cors, "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
       "access-control-allow-headers": "Content-Type, X-Bootstrap-Secret",
       "access-control-max-age": "600"
     }});
