@@ -1,3 +1,4 @@
+import { authenticateWithPassword } from "./modules/auth/login/login-handler.js";
 const SESSION_SECONDS = 12 * 60 * 60;
 const PASSWORD_ITERATIONS = 310_000;
 const COOKIE_NAME = "erp_session";
@@ -97,6 +98,8 @@ async function readJson(request) {
 }
 const normalizeEmail = value => String(value || "").trim().toLowerCase();
 const validEmail = value => value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const normalizeUsername = value => String(value || "").trim().toLowerCase();
+const validUsername = value => typeof value === "string" && /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,63}$/.test(value);
 const validPassword = value => typeof value === "string" && value.length >= 12 && value.length <= 128;
 async function sessionUser(request, env) {
   const token = cookieValue(request, COOKIE_NAME);
@@ -132,9 +135,13 @@ async function bootstrap(request, env) {
   }
   const email = normalizeEmail(body.email);
   const displayName = String(body.display_name || "").trim();
+  const suggestedUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9._-]/g, "_").replace(/^[._-]+|[._-]+$/g, "").slice(0, 64);
+  const username = normalizeUsername(body.username || suggestedUsername);
   const password = body.password;
-  if (!validEmail(email) || !displayName || displayName.length > 120 || !validPassword(password))
-    return fail(400, "validation_failed", "ایمیل، نام نمایشی یا رمز عبور معتبر نیست؛ رمز باید حداقل ۱۲ نویسه داشته باشد.");
+  if (!validEmail(email) || !validUsername(username) || !displayName || displayName.length > 120 || !validPassword(password))
+    return fail(400, "validation_failed", "نام کاربری (۳ تا ۶۴ نویسه)، ایمیل، نام نمایشی یا رمز عبور معتبر نیست.");
+  if (await env.DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE").bind(username).first())
+    return fail(409, "username_exists", "این نام کاربری قبلاً ثبت شده است.");
   const state = await env.DB.prepare("SELECT bootstrap_complete FROM system_state WHERE id=1").first();
   if (!state || state.bootstrap_complete) return fail(409, "bootstrap_already_completed", "مدیر اولیه قبلاً ساخته شده است.");
   const id = crypto.randomUUID();
@@ -142,9 +149,9 @@ async function bootstrap(request, env) {
   try {
     await env.DB.batch([
       env.DB.prepare("UPDATE system_state SET bootstrap_complete=1 WHERE id=1 AND bootstrap_complete=0"),
-      env.DB.prepare(`INSERT INTO users (id, email, display_name, password_hash)
-        SELECT ?, ?, ?, ? WHERE (SELECT bootstrap_complete FROM system_state WHERE id=1)=1
-        AND NOT EXISTS (SELECT 1 FROM users)`).bind(id, email, displayName, passwordHash),
+      env.DB.prepare(`INSERT INTO users (id, username, email, display_name, password_hash)
+        SELECT ?, ?, ?, ?, ? WHERE (SELECT bootstrap_complete FROM system_state WHERE id=1)=1
+        AND NOT EXISTS (SELECT 1 FROM users)`).bind(id, username, email, displayName, passwordHash),
       env.DB.prepare("INSERT INTO user_roles (user_id, role_id) SELECT ?, id FROM roles WHERE name='admin' AND EXISTS (SELECT 1 FROM users WHERE id=?)").bind(id, id),
       env.DB.prepare("INSERT INTO audit_events (id, actor_user_id, action, entity_type, entity_id, metadata_json) SELECT ?, ?, 'auth.bootstrap_completed', 'user', ?, ? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)")
         .bind(crypto.randomUUID(), id, id, JSON.stringify({ email }), id)
@@ -155,34 +162,7 @@ async function bootstrap(request, env) {
   const user = await env.DB.prepare("SELECT id FROM users WHERE id=?").bind(id).first();
   if (!user) return fail(409, "bootstrap_already_completed", "مدیر اولیه قبلاً ساخته شده است.");
   const token = await createSession(id, env);
-  return json({ data: { id, email, display_name: displayName, roles: ["admin"] } }, 201, { "set-cookie": sessionCookie(token) });
-}
-async function login(request, env) {
-  let body;
-  try { body = await readJson(request); } catch (e) {
-    return fail(400, e.message === "too_large" ? "request_too_large" : e.message === "content_type" ? "content_type_required" : "invalid_json", "درخواست معتبر نیست.");
-  }
-  await env.DB.prepare("DELETE FROM login_attempts WHERE attempted_at < datetime('now', '-1 day')").run();
-  const email = normalizeEmail(body.email);
-  const password = body.password;
-  if (!validEmail(email) || typeof password !== "string" || password.length > 128)
-    return fail(400, "validation_failed", "ایمیل یا رمز عبور معتبر نیست.");
-  const ip = request.headers.get("cf-connecting-ip") || "unknown";
-  const attemptKey = await sha256(`${email}| ${ip}`);
-  const attempts = await env.DB.prepare("SELECT COUNT(*) AS count FROM login_attempts WHERE attempt_key=? AND attempted_at > datetime('now', ?)")
-    .bind(attemptKey, `-${LOGIN_WINDOW_MINUTES} minutes`).first();
-  if (Number(attempts?.count || 0) >= MAX_LOGIN_ATTEMPTS) return fail(429, "login_rate_limited", "تلاش‌های ورود بیش از حد است؛ بعداً دوباره تلاش کن.");
-  const user = await env.DB.prepare("SELECT id, email, display_name, password_hash, status FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
-  const valid = user && user.status === "active" && await verifyPassword(password, user.password_hash);
-  if (!valid) {
-    await env.DB.prepare("INSERT INTO login_attempts (attempt_key) VALUES (?)").bind(attemptKey).run();
-    return fail(401, "invalid_credentials", "ایمیل یا رمز عبور نادرست است.");
-  }
-  await env.DB.prepare("DELETE FROM login_attempts WHERE attempt_key=?").bind(attemptKey).run();
-  const roles = await env.DB.prepare("SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id=r.id WHERE ur.user_id=?").bind(user.id).all();
-  const token = await createSession(user.id, env);
-  await audit(env, user.id, "auth.login", "user", user.id);
-  return json({ data: { id: user.id, email: user.email, display_name: user.display_name, roles: roles.results.map(row => row.name) } }, 200, { "set-cookie": sessionCookie(token) });
+  return json({ data: { id, username, email, display_name: displayName, roles: ["admin"] } }, 201, { "set-cookie": sessionCookie(token) });
 }
 function unitValidation(body) {
   const code = String(body.code || "").trim().toUpperCase();
@@ -239,10 +219,12 @@ async function createUser(request, env, actor) {
     return fail(e.message === "too_large" ? 413 : 400, e.message === "too_large" ? "request_too_large" : e.message === "content_type" ? "content_type_required" : "invalid_json", "درخواست معتبر نیست.");
   }
   const email=normalizeEmail(body.email), displayName=String(body.display_name||"").trim(), password=body.password;
+  const suggestedUsername=email.split("@")[0].toLowerCase().replace(/[^a-z0-9._-]/g,"_").replace(/^[._-]+|[._-]+$/g,"").slice(0,64);
+  const username=normalizeUsername(body.username||suggestedUsername);
   const roleNames=Array.isArray(body.roles)?[...new Set(body.roles.map(value=>String(value).trim()))]:[];
   const scopeIds=Array.isArray(body.scope_ids)?[...new Set(body.scope_ids.map(value=>String(value)))]:[];
-  if(!validEmail(email)||!displayName||displayName.length>120||!validPassword(password))
-    return fail(400,"validation_failed","ایمیل، نام نمایشی یا رمز عبور معتبر نیست.");
+  if(!validEmail(email)||!validUsername(username)||!displayName||displayName.length>120||!validPassword(password))
+    return fail(400,"validation_failed","نام کاربری، ایمیل، نام نمایشی یا رمز عبور معتبر نیست.");
   if(!roleNames.length||roleNames.length>4||roleNames.some(name=>!["admin","org_manager","operator","reader"].includes(name)))
     return fail(400,"invalid_roles","نقش‌های انتخاب‌شده معتبر نیستند.");
   if(scopeIds.length>50||scopeIds.some(id=>!id||id.length>64))
@@ -250,8 +232,8 @@ async function createUser(request, env, actor) {
   const hasGlobalAdmin=roleNames.includes("admin");
   if(hasGlobalAdmin&&scopeIds.length) return fail(400,"admin_scope_not_allowed","مدیر سامانه دسترسی سراسری دارد و به محدوده نیاز ندارد.");
   if(!hasGlobalAdmin&&!scopeIds.length) return fail(400,"scope_required","برای کاربر غیرمدیر دست‌کم یک محدوده سازمانی تعیین کنید.");
-  const existing=await env.DB.prepare("SELECT id FROM users WHERE email=? COLLATE NOCASE").bind(email).first();
-  if(existing)return fail(409,"email_exists","این ایمیل قبلاً ثبت شده است.");
+  const existing=await env.DB.prepare("SELECT id,email,username FROM users WHERE email=? COLLATE NOCASE OR username=? COLLATE NOCASE").bind(email,username).first();
+  if(existing)return fail(409, existing.email?.toLowerCase()===email ? "email_exists" : "username_exists", existing.email?.toLowerCase()===email ? "این ایمیل قبلاً ثبت شده است." : "این نام کاربری قبلاً ثبت شده است.");
   const roleResult=await env.DB.prepare(`SELECT id,name FROM roles WHERE name IN (${roleNames.map(()=>"?").join(",")})`).bind(...roleNames).all();
   if(roleResult.results.length!==roleNames.length)return fail(400,"invalid_roles","یکی از نقش‌ها در پایگاه داده تعریف نشده است.");
   if(scopeIds.length){
@@ -259,7 +241,7 @@ async function createUser(request, env, actor) {
     if(scopeResult.results.length!==scopeIds.length)return fail(400,"invalid_scopes","یکی از محدوده‌ها وجود ندارد یا فعال نیست.");
   }
   const id=crypto.randomUUID(), passwordHash=await hashPassword(password);
-  const statements=[env.DB.prepare("INSERT INTO users (id,email,display_name,password_hash) VALUES (?,?,?,?)").bind(id,email,displayName,passwordHash)];
+  const statements=[env.DB.prepare("INSERT INTO users (id,username,email,display_name,password_hash) VALUES (?,?,?,?,?)").bind(id,username,email,displayName,passwordHash)];
   for(const role of roleResult.results) statements.push(env.DB.prepare("INSERT INTO user_roles (user_id,role_id) VALUES (?,?)").bind(id,role.id));
   for(const scopeId of scopeIds) statements.push(env.DB.prepare("INSERT INTO user_org_scopes (user_id,org_unit_id,created_by) VALUES (?,?,?)").bind(id,scopeId,actor.id));
   statements.push(env.DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json) VALUES (?,?, 'user.created','user',?,?)")
@@ -448,7 +430,7 @@ async function route(request, env) {
     return json({ data: { bootstrap_required: !state || !state.bootstrap_complete } });
   }
   if (method === "POST" && url.pathname === "/api/v1/auth/bootstrap") return bootstrap(request, env);
-  if (method === "POST" && url.pathname === "/api/v1/auth/login") return login(request, env);
+  if (method === "POST" && url.pathname === "/api/v1/auth/login") return authenticateWithPassword(request, env, { readJson, fail, normalizeEmail, normalizeUsername, validEmail, validUsername, validPassword, sha256, verifyPassword, createSession, audit, json, sessionCookie, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MINUTES });
   if (method === "POST" && url.pathname === "/api/v1/auth/logout") {
     const token = cookieValue(request, COOKIE_NAME);
     const activeUser = token ? await sessionUser(request, env) : null;
