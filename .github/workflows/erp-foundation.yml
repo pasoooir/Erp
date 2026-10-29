@@ -1,0 +1,51 @@
+name: ERP foundation checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "migrations/**"
+      - "tests/**"
+      - "wrangler.toml"
+      - "package.json"
+      - ".github/workflows/erp-foundation.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "migrations/**"
+      - "tests/**"
+      - "wrangler.toml"
+      - "package.json"
+      - ".github/workflows/erp-foundation.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-erp-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: npm run check
+      - name: Run Worker and D1 schema unit tests
+        run: npm test
+      - name: Install Wrangler for local runtime integration
+        run: npm install --no-save --package-lock=false wrangler playwright
+      - name: Install Chromium for UI integration
+        run: npx playwright install --with-deps chromium
+      - name: Apply D1 migration to local SQLite
+        run: CI=true npx wrangler d1 migrations apply erp-dev --local
+      - name: Exercise Worker on local Cloudflare runtime
+        env:
+          BOOTSTRAP_SECRET: ci-only-bootstrap-secret-for-local-runtime
+        run: |
+          printf 'BOOTSTRAP_SECRET=%s\n' "$BOOTSTRAP_SECRET" > .dev.vars
+          node tests/worker-runtime-smoke.mjs
