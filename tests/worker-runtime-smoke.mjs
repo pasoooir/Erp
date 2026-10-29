@@ -159,7 +159,7 @@ try {
   assert.equal((await api("/api/v1/auth/me",{headers:{cookie}})).response.status,401);
   const managerRow=page.locator("#usersTable tr").filter({hasText:"manager@example.com"});
   await managerRow.locator('button[data-action="user-status"]').click();
-  await managerRow.locator("td").nth(4).getByText("غیرفعال").waitFor();
+  await managerRow.locator("td").nth(5).getByText("غیرفعال").waitFor();
   assert.equal((await api("/api/v1/auth/me",{headers:{cookie:managerCookie}})).response.status,401);
 
   await page.locator("#logoutButton").click();
