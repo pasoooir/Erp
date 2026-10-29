@@ -138,7 +138,7 @@ test("allows the exact GitHub Pages bootstrap preflight headers", async () => {
 
 test("rejects unapproved headers in CORS preflight", async () => {
   const { call } = harness();
-  const response = await call("/api/v1/auth/bootstrap",
+  const response = await call("/api/v1/auth/bootstrap", {
     method: "OPTIONS",
     headers: {
       origin: "https://pasoooir.github.io",
