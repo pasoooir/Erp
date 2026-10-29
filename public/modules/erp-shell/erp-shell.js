@@ -150,7 +150,15 @@
       const user=await api("/api/v1/auth/me");showApp(user);notice("ورود موفق بود؛ داده‌ها از D1 خوانده می‌شوند.","success");
       await loadUnits();if(user.roles.includes("admin")){await loadUsers();await loadAudit(true);}
     }catch{
-      currentUser=null;cancelEdit();const status=await api("/api/v1/auth/status");showAuth(status.bootstrap_required);notice(status.bootstrap_required?"پایگاه داده آماده ساخت نخستین مدیر است.":"برای ادامه وارد سامانه شوید.");
+      currentUser=null;cancelEdit();
+      try{
+        const status=await api("/api/v1/auth/status");
+        showAuth(status.bootstrap_required);
+        notice(status.bootstrap_required?"پایگاه داده آماده ساخت نخستین مدیر است.":"برای ادامه وارد سامانه شوید.");
+      }catch{
+        showAuth(false);
+        notice("رابط ERP بارگذاری شد؛ سرویس API هنوز در دسترس نیست. تا زمان اتصال API امن به پایگاه داده، ورود و عملیات داده‌ای فعال نیستند.","error");
+      }
     }
   }
   forms.bootstrap.addEventListener("submit",async event=>{
