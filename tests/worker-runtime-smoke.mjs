@@ -46,6 +46,7 @@ try {
   await page.locator("#bootstrapForm").waitFor({state:"visible"});
   await page.locator('input[name="bootstrap_secret"]').fill(secret);
   await page.locator('#bootstrapForm input[name="display_name"]').fill("مدیر آزمایش");
+  await page.locator('#bootstrapForm input[name="username"]').fill("admin");
   await page.locator('#bootstrapForm input[name="email"]').fill("admin@example.com");
   await page.locator('#bootstrapForm input[name="password"]').fill(password);
   await page.locator("#bootstrapForm button[type=submit]").click();
@@ -98,6 +99,7 @@ try {
   assert.equal(await page.locator("#unitsTable tr").count(),4);
 
   await page.locator('#userForm input[name="display_name"]').fill("مدیر شرکت اول");
+  await page.locator('#userForm input[name="username"]').fill("manager");
   await page.locator('#userForm input[name="email"]').fill("manager@example.com");
   await page.locator('#userForm input[name="password"]').fill("manager-password-123");
   await page.locator('#userForm select[name="role"]').selectOption("org_manager");
@@ -124,9 +126,9 @@ try {
   ));
   assert.equal(secondBootstrap.response.status,409);
 
-  const wrong=await api("/api/v1/auth/login",post({email:"admin@example.com",password:"wrong-password-123"}));
+  const wrong=await api("/api/v1/auth/login",post({username:"admin",password:"wrong-password-123"}));
   assert.equal(wrong.response.status,401);
-  const login=await api("/api/v1/auth/login",post({email:"admin@example.com",password}));
+  const login=await api("/api/v1/auth/login",post({username:"admin",password}));
   assert.equal(login.response.status,200);
   const cookie=login.response.headers.get("set-cookie")?.split(";")[0];
   assert.ok(cookie&&cookie.startsWith("erp_session="));
@@ -162,7 +164,7 @@ try {
 
   await page.locator("#logoutButton").click();
   await page.locator("#loginForm").waitFor({state:"visible"});
-  await page.locator('#loginForm input[name="email"]').fill("admin@example.com");
+  await page.locator('#loginForm input[name="identifier"]').fill("admin");
   await page.locator('#loginForm input[name="password"]').fill(password);
   await page.locator("#loginForm button[type=submit]").click();
   await page.locator("#appPanel").waitFor({state:"visible"});
