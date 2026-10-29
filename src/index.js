@@ -157,10 +157,19 @@ async function bootstrap(request, env) {
         .bind(crypto.randomUUID(), id, id, JSON.stringify({ email }), id)
     ]);
   } catch (error) {
-    // Log only the database error class/message; never log request bodies, credentials, or secrets.
+    // Keep the useful D1 diagnostic, but redact all exact values supplied by the caller first.
+    const sensitiveValues = [
+      supplied, String(password ?? ""), String(body.email ?? ""), email,
+      String(body.display_name ?? ""), displayName, String(body.username ?? ""), username
+    ].filter(value => value.length > 0).sort((a, b) => b.length - a.length);
+    const rawMessage = String(error?.message || error || "unknown");
+    const safeMessage = sensitiveValues.reduce(
+      (message, value) => message.split(value).join("[redacted]"),
+      rawMessage
+    ).slice(0, 240);
     console.error("auth.bootstrap_batch_failed", {
       name: error instanceof Error ? error.name : "UnknownError",
-      message: String(error?.message || error || "unknown").slice(0, 240)
+      message: safeMessage
     });
     return fail(500, "bootstrap_failed", "راه‌اندازی اولیه انجام نشد؛ خطای داخلی ثبت شد.");
   }
