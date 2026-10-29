@@ -1,4 +1,5 @@
 /* Dedicated, responsive authentication screen */
+.auth-form-mount{display:flex;min-width:0}.auth-form-mount>.auth-card{width:100%;min-width:0}
 .auth-panel{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(320px,1.1fr);max-width:980px;min-height:540px;margin:clamp(18px,5vh,54px) auto;padding:0;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:var(--panel);box-shadow:0 28px 90px #0005}
 .auth-brand{position:relative;display:flex;flex-direction:column;justify-content:center;gap:18px;padding:clamp(26px,4vw,48px);overflow:hidden;background:radial-gradient(ellipse at 15% 5%,#28517a 0,transparent 52%),linear-gradient(150deg,#142b46,#0b1728 80%);border-left:1px solid var(--line)}
 .auth-brand:after{content:"";position:absolute;width:260px;height:260px;left:-120px;bottom:-135px;border:1px solid #7cc5ff35;border-radius:50%;box-shadow:0 0 0 28px #7cc5ff0b,0 0 0 58px #7cc5ff08;pointer-events:none}
