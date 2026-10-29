@@ -1,0 +1,18 @@
+name = "erp-foundation"
+main = "src/index.js"
+compatibility_date = "2026-10-28"
+workers_dev = true
+
+[vars]
+APP_ORIGIN = "http://localhost:8787"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "erp-dev"
+database_id = "00000000-0000-4000-8000-000000000001"
+migrations_dir = "migrations"
