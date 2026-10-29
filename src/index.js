@@ -111,7 +111,7 @@ async function sessionUser(request, env) {
     LEFT JOIN user_roles ur ON ur.user_id=u.id LEFT JOIN roles r ON r.id=ur.role_id
     WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>CURRENT_TIMESTAMP AND u.status='active'
     GROUP BY u.id`).bind(tokenHash).first();
-  return row ? { id: row.id, email: row.email, display_name: row.display_name, roles: String(row.roles || "").split(",").filter(Boolean) } : null;
+  return row ? { id: row.id, username: row.username, email: row.email, display_name: row.display_name, roles: String(row.roles || "").split(",").filter(Boolean) } : null;
 }
 async function createSession(userId, env) {
   const token = randomToken();
