@@ -61,6 +61,7 @@
           <div class="section-heading"><div><p class="eyebrow">مدیریت دسترسی</p><h2>کاربران و محدوده سازمانی</h2><p>نقش غیرمدیر فقط در شرکت/واحدهای اختصاص‌یافته و زیرمجموعه‌های آن دسترسی دارد.</p></div></div>
           <form id="userForm" class="form user-form">
             <label>نام نمایشی<input name="display_name" maxlength="120" required></label>
+            <label>نام کاربری<input name="username" minlength="3" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,63}" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>
             <label>ایمیل<input name="email" type="email" autocomplete="off" required></label>
             <label>رمز اولیه<input name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
             <label>نقش<select name="role" required><option value="org_manager">مدیر واحد سازمانی</option><option value="operator">اپراتور (فقط مشاهده)</option><option value="reader">مشاهده‌گر</option><option value="admin">مدیر سراسری</option></select></label>
