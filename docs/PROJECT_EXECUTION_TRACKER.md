@@ -59,8 +59,17 @@
 ## ERP-AUTH-UI-001 — بازطراحی فرم ورود
 
 - محدوده: فقط تجربه ورود؛ هیچ قرارداد API یا سیاست احراز هویت سمت سرور تغییر نکرده است.
-- تغییرات واقعی در شاخه `feature/erp-user-role-scope-edit`: `public/index.html` (ساختار ورود RTL و معرفی سامانه)، `public/styles.css` (صفحه ورود واکنش‌گرا برای موبایل/دسکتاپ، حالت کاهش حرکت و تمرکز قابل مشاهده)، `public/app.js` (نمایش/پنهان‌سازی رمز با کنترل دسترس‌پذیر و حالت در حال ورود).
+- تغییرات واقعی در شاخه `feature/erp-user-role-scope-edit`: `public/index.html` (پوسته)، `public/modules/auth/login/login-form.html`, `login-form.css`, `login-form.js` (ماژول ورود)، `public/modules/erp-shell/erp-shell.css`, `erp-shell.js` (پوسته ERP)، `src/modules/auth/login/login-handler.js`, `migrations/0003_auth_username.sql` و تست‌های احراز هویت.
 - commitهای تغییر: `95f9d5630e48b525556db09a0544a89bd74acaf1`, `9a011c652891592b52dcff29757afe87ed3630b6`, `304eaacb1c7e51a672f21553d735a7ad061632c6`.
-- معیارهای پیاده‌سازی: ایمیل با autocomplete و ورودی مناسب، رمز عبور با امکان نمایش/پنهان‌سازی، وضعیت ارسال فرم، حفظ اتصال به `POST /api/v1/auth/login` و پیام خطای موجود؛ bootstrap اولیه همچنان در همان پنل پشتیبانی می‌شود.
+- معیارهای پیاده‌سازی: ورود با نام کاربری یا ایمیل و رمز عبور؛ username یکتا در D1 با migration افزایشی؛ bootstrap و ساخت کاربر با نام کاربری؛ حفظ cookie امن، هش رمز، rate limit و audit؛ فرم ورود به‌صورت HTML/CSS/JS اختصاصی در پوشه ماژول.
 - وضعیت: `in_progress` — کد ثبت شده؛ اجرای CI مخصوص این تغییر و تأیید بصری مرورگر هنوز لازم است. تا زمان موفقیت تست‌ها و بررسی صفحه در موبایل/دسکتاپ، تکمیل‌شده محسوب نمی‌شود.
 - ممنوعیت‌های رعایت‌شده: بدون merge به `main`، deploy، تغییر Secret یا migration راه‌دور.
+
+
+## ERP-AUTH-USERNAME-001 — ورود با نام کاربری و رمز عبور
+
+- API ورود به ماژول مستقل `src/modules/auth/login/login-handler.js` منتقل شده و مسیر `POST /api/v1/auth/login` اکنون `identifier`، `username` یا `email` به‌همراه `password` را می‌پذیرد.
+- migration افزایشی `migrations/0003_auth_username.sql` ستون username و ایندکس یکتای بدون حساسیت به بزرگی حروف را اضافه می‌کند؛ migration فقط در CI محلی است و روی D1 راه‌دور اجرا نشده.
+- فرم ورود و assets در `public/modules/auth/login/`؛ پوسته عمومی رابط در `public/modules/erp-shell/`. `public/index.html` فقط پوسته/نقطه اتصال ماژول را نگه می‌دارد.
+- تست‌های Worker و Chromium برای username login اضافه/به‌روزرسانی شده‌اند؛ وضعیت تا پایان CI: `in_progress`.
+- محدودیت: هنوز در شاخه توسعه و تأیید نشده برای production؛ هیچ deploy یا merge انجام نشده است.
