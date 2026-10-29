@@ -120,7 +120,8 @@ test("login failure is generic, successful login issues a session, logout revoke
   assert.equal((await call("/api/v1/auth/me",{headers:{cookie}})).status,401);
 });
 test("allows the exact GitHub Pages bootstrap preflight headers", async () => {
-  const response = await call("/api/v1/auth/bootstrap", {
+  const { call } = harness();
+  const response = await call("/api/v1/auth/bootstrap",
     method: "OPTIONS",
     headers: {
       origin: "https://pasoooir.github.io",
@@ -136,7 +137,8 @@ test("allows the exact GitHub Pages bootstrap preflight headers", async () => {
 });
 
 test("rejects unapproved headers in CORS preflight", async () => {
-  const response = await call("/api/v1/auth/bootstrap", {
+  const { call } = harness();
+  const response = await call("/api/v1/auth/bootstrap",
     method: "OPTIONS",
     headers: {
       origin: "https://pasoooir.github.io",
