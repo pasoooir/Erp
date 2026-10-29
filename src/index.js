@@ -140,13 +140,17 @@ async function bootstrap(request, env) {
   const password = body.password;
   if (!validEmail(email) || !validUsername(username) || !displayName || displayName.length > 120 || !validPassword(password))
     return fail(400, "validation_failed", "نام کاربری (۳ تا ۶۴ نویسه)، ایمیل، نام نمایشی یا رمز عبور معتبر نیست.");
-  if (await env.DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE").bind(username).first())
-    return fail(409, "username_exists", "این نام کاربری قبلاً ثبت شده است.");
-  const state = await env.DB.prepare("SELECT bootstrap_complete FROM system_state WHERE id=1").first();
-  if (!state || state.bootstrap_complete) return fail(409, "bootstrap_already_completed", "مدیر اولیه قبلاً ساخته شده است.");
-  const id = crypto.randomUUID();
-  const passwordHash = await hashPassword(password);
+  let stage = "username_check";
   try {
+    if (await env.DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE").bind(username).first())
+      return fail(409, "username_exists", "این نام کاربری قبلاً ثبت شده است.");
+    stage = "bootstrap_state_check";
+    const state = await env.DB.prepare("SELECT bootstrap_complete FROM system_state WHERE id=1").first();
+    if (!state || state.bootstrap_complete) return fail(409, "bootstrap_already_completed", "مدیر اولیه قبلاً ساخته شده است.");
+    const id = crypto.randomUUID();
+    stage = "password_hash";
+    const passwordHash = await hashPassword(password);
+    stage = "database_batch";
     await env.DB.batch([
       env.DB.prepare("UPDATE system_state SET bootstrap_complete=1 WHERE id=1 AND bootstrap_complete=0"),
       env.DB.prepare(`INSERT INTO users (id, username, email, display_name, password_hash)
@@ -156,8 +160,14 @@ async function bootstrap(request, env) {
       env.DB.prepare("INSERT INTO audit_events (id, actor_user_id, action, entity_type, entity_id, metadata_json) SELECT ?, ?, 'auth.bootstrap_completed', 'user', ?, ? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)")
         .bind(crypto.randomUUID(), id, id, JSON.stringify({ email }), id)
     ]);
+    stage = "created_user_verification";
+    const user = await env.DB.prepare("SELECT id FROM users WHERE id=?").bind(id).first();
+    if (!user) return fail(409, "bootstrap_already_completed", "مدیر اولیه قبلاً ساخته شده است.");
+    stage = "session_creation";
+    const token = await createSession(id, env);
+    return json({ data: { id, username, email, display_name: displayName, roles: ["admin"] } }, 201, { "set-cookie": sessionCookie(token) });
   } catch (error) {
-    // Keep the useful D1 diagnostic, but redact all exact values supplied by the caller first.
+    // Keep useful technical diagnostics while removing all caller-supplied values.
     const sensitiveValues = [
       supplied, String(password ?? ""), String(body.email ?? ""), email,
       String(body.display_name ?? ""), displayName, String(body.username ?? ""), username
@@ -167,16 +177,13 @@ async function bootstrap(request, env) {
       (message, value) => message.split(value).join("[redacted]"),
       rawMessage
     ).slice(0, 240);
-    console.error("auth.bootstrap_batch_failed", {
+    console.error("auth.bootstrap_failed", {
+      stage,
       name: error instanceof Error ? error.name : "UnknownError",
       message: safeMessage
     });
     return fail(500, "bootstrap_failed", "راه‌اندازی اولیه انجام نشد؛ خطای داخلی ثبت شد.");
   }
-  const user = await env.DB.prepare("SELECT id FROM users WHERE id=?").bind(id).first();
-  if (!user) return fail(409, "bootstrap_already_completed", "مدیر اولیه قبلاً ساخته شده است.");
-  const token = await createSession(id, env);
-  return json({ data: { id, username, email, display_name: displayName, roles: ["admin"] } }, 201, { "set-cookie": sessionCookie(token) });
 }
 function unitValidation(body) {
   const code = String(body.code || "").trim().toUpperCase();
