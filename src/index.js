@@ -531,11 +531,20 @@ export default {
     }});
     const cors = corsHeaders(request, env);
     if (cors === null) return fail(403, "origin_denied", "مبدأ درخواست مجاز نیست.");
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: {
-      ...cors, "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
-      "access-control-allow-headers": "Content-Type, X-Bootstrap-Secret",
-      "access-control-max-age": "600"
-    }});
+    if (request.method === "OPTIONS") {
+      const requestedHeaders = (request.headers.get("access-control-request-headers") || "")
+        .split(",").map(header => header.trim().toLowerCase()).filter(Boolean);
+      const allowedHeaders = new Set(["content-type", "x-bootstrap-secret"]);
+      if (requestedHeaders.some(header => !allowedHeaders.has(header)))
+        return fail(403, "preflight_header_denied", "درخواست شامل سرآیند غیرمجاز است.");
+      return new Response(null, { status: 204, headers: {
+        ...cors, "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+        "access-control-allow-headers": requestedHeaders.length
+          ? requestedHeaders.join(", ")
+          : "Content-Type, X-Bootstrap-Secret",
+        "access-control-max-age": "600"
+      }});
+    }
     try {
       const response = await route(request, env);
       if (!Object.keys(cors).length) return response;
