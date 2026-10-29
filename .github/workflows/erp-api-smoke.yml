@@ -31,7 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           page="$(curl --fail-with-body --silent --show-error "$PAGES_BASE")"
-          src="$(printf '%s' "$page" | grep -oE 'src="[^"]*erp-shell\\.js"' | head -n 1 | cut -d '"' -f 2)"
+          src="$(printf '%s' "$page" | grep -oE 'src="[^"]*erp-shell[.]js"' | head -n 1 | cut -d '"' -f 2)"
           test -n "$src"
           asset_url="$(node -e 'console.log(new URL(process.argv[1], process.argv[2]).href)' "$src" "$PAGES_BASE")"
           curl --fail-with-body --silent --show-error "$asset_url" -o /tmp/erp-shell.js
