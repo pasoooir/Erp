@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="پایه عملیاتی ERP کارخانه خودروسازی؛ ورود امن و ساختار سازمانی">
+  <title>ERP کارخانه | ساختار سازمانی</title>
+  <link rel="stylesheet" href="./public/modules/erp-shell/erp-shell.css">
+  <link rel="stylesheet" href="./public/modules/auth/login/login-form.css">
+  <script src="./public/modules/erp-shell/erp-shell.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div><span class="mark" aria-hidden="true">ERP</span><div><h1>سامانه یکپارچه کارخانه</h1><p>پایه عملیاتی · مدیریت ساختار سازمانی</p></div></div>
+    <button id="logoutButton" class="button secondary hidden" type="button">خروج امن</button>
+  </header>
+  <main class="layout">
+    <section id="notice" class="notice" role="status" aria-live="polite">در حال بررسی وضعیت سامانه…</section>
+    <section id="authPanel" class="auth-panel hidden">
+      <aside class="auth-brand" aria-label="معرفی سامانه">
+        <div class="auth-brand-mark">ERP<span>+</span></div>
+        <p class="eyebrow">ENTERPRISE RESOURCE PLANNING</p>
+        <h2>یک کارخانه،<br>یک سامانه یکپارچه</h2>
+        <p class="auth-brand-copy">مدیریت امن عملیات، منابع و ساختار سازمانی در یک فضای کاری واحد.</p>
+        <div class="auth-feature"><span aria-hidden="true">✓</span><div><strong>دسترسی کنترل‌شده</strong><small>نقش‌ها و محدوده‌های سازمانی</small></div></div>
+        <div class="auth-feature"><span aria-hidden="true">✓</span><div><strong>ثبت رویدادهای امنیتی</strong><small>قابلیت پیگیری عملیات مهم</small></div></div>
+        <div class="auth-brand-foot"><span class="auth-status-dot"></span> درگاه ورود امن · نسخه عملیاتی پایه</div>
+      </aside>
+      <div id="authFormMount" class="auth-form-mount" aria-live="polite"></div>
+    </section>
+    <section id="appPanel" class="hidden">
+      <div class="welcome panel"><div><p class="eyebrow">فضای کاری</p><h2 id="welcomeTitle">ساختار سازمانی</h2><p id="welcomeText">اطلاعات از پایگاه داده خوانده می‌شود.</p></div><span class="live"><i></i> اتصال API</span></div>
+      <div class="grid">
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">داده‌های اصلی</p><h2>واحدهای سازمانی</h2><p>شرکت، سایت، واحد، سمت، خط تولید و انبار</p></div><span id="unitCount" class="count">۰</span></div>
+          <div id="unitsLoading" class="empty">در حال بارگذاری…</div>
+          <div id="unitsEmpty" class="empty hidden">هنوز واحدی ثبت نشده است.</div>
+          <div class="table-wrap"><table><thead><tr><th>کد</th><th>نام</th><th>نوع</th><th>والد</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody id="unitsTable"></tbody></table></div>
+        </section>
+        <section id="createPanel" class="panel hidden">
+          <div class="section-heading"><div><p class="eyebrow">عملیات مجاز مدیر</p><h2>ثبت واحد سازمانی</h2><p>کد یکتا و نوع/والد معتبر لازم است.</p></div></div>
+          <form id="unitForm" class="form">
+            <label>کد یکتا<input name="code" minlength="2" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,31}" required><small>لاتین، عدد، خط تیره یا زیرخط</small></label>
+            <label>نام واحد<input name="name" maxlength="120" required></label>
+            <label>نوع واحد<select name="unit_type" required><option value="company">شرکت</option><option value="site">سایت / کارخانه</option><option value="department">واحد سازمانی</option><option value="position">سمت</option><option value="production_line">خط تولید</option><option value="warehouse">انبار</option></select></label>
+            <label id="parentLabel">واحد والد<select name="parent_id"><option value="">بدون والد (فقط شرکت)</option></select></label>
+            <button class="button" type="submit">ثبت واحد</button>
+          </form>
+        </section>
+        <section id="editPanel" class="panel hidden">
+          <div class="section-heading"><div><p class="eyebrow">ویرایش ساختار</p><h2>ویرایش واحد سازمانی</h2><p>کد و نوع واحد ثابت هستند؛ تغییر والد در سمت سرور اعتبارسنجی می‌شود.</p></div></div>
+          <form id="editUnitForm" class="form">
+            <input name="id" type="hidden">
+            <label>کد یکتا<input name="code" readonly></label>
+            <label>نام واحد<input name="name" maxlength="120" required></label>
+            <label>واحد والد<select name="parent_id"><option value="">بدون والد (فقط شرکت)</option></select></label>
+            <div class="button-row"><button class="button" type="submit">ذخیره تغییرات</button><button id="cancelEditButton" class="button secondary" type="button">لغو</button></div>
+          </form>
+        </section>
+        <section id="usersPanel" class="panel hidden">
+          <div class="section-heading"><div><p class="eyebrow">مدیریت دسترسی</p><h2>کاربران و محدوده سازمانی</h2><p>نقش غیرمدیر فقط در شرکت/واحدهای اختصاص‌یافته و زیرمجموعه‌های آن دسترسی دارد.</p></div></div>
+          <form id="userForm" class="form user-form">
+            <label>نام نمایشی<input name="display_name" maxlength="120" required></label>
+            <label>نام کاربری<input name="username" minlength="3" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,63}" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>
+            <label>ایمیل<input name="email" type="email" autocomplete="off" required></label>
+            <label>رمز اولیه<input name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+            <label>نقش<select name="role" required><option value="org_manager">مدیر واحد سازمانی</option><option value="operator">اپراتور (فقط مشاهده)</option><option value="reader">مشاهده‌گر</option><option value="admin">مدیر سراسری</option></select></label>
+            <label class="scope-field">محدوده‌های دسترسی<select name="scope_ids" multiple size="4" aria-label="محدوده‌های دسترسی"></select></label>
+            <p class="form-hint">برای مدیر سراسری محدوده لازم نیست؛ سایر نقش‌ها حداقل به یک واحد فعال نیاز دارند.</p>
+            <button class="button" type="submit">ایجاد کاربر</button>
+          </form>
+          <section id="userAccessPanel" class="panel hidden" aria-labelledby="accessUserTitle">
+            <div class="section-heading"><div><p class="eyebrow">کنترل دسترسی</p><h3 id="accessUserTitle">ویرایش نقش و محدوده</h3></div></div>
+            <form id="userAccessForm" class="form user-form">
+              <input name="id" type="hidden">
+              <label>نقش جدید<select name="role" required><option value="org_manager">مدیر واحد سازمانی</option><option value="operator">اپراتور</option><option value="reader">مشاهده‌گر</option><option value="admin">مدیر سراسری</option></select></label>
+              <label class="scope-field">محدوده‌های دسترسی<select name="scope_ids" multiple size="4" aria-label="محدوده‌های دسترسی برای ویرایش"></select></label>
+              <p class="form-hint">برای مدیر سراسری محدوده لازم نیست؛ سایر نقش‌ها حداقل یک محدوده فعال نیاز دارند.</p>
+              <div class="button-row"><button class="button" type="submit">ذخیره دسترسی</button><button id="cancelUserAccessButton" class="button secondary" type="button">لغو</button></div>
+            </form>
+          </section>
+          <div class="table-wrap users-table-wrap"><table><thead><tr><th>نام</th><th>نام کاربری</th><th>ایمیل</th><th>نقش</th><th>محدوده‌ها</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody id="usersTable"></tbody></table></div>
+        </section>
+        <section id="auditPanel" class="panel hidden">
+          <div class="section-heading">
+            <div><p class="eyebrow">امنیت و پاسخ‌گویی</p><h2>گزارش ممیزی</h2><p>رویدادهای ثبت‌شده در D1؛ فقط برای مدیر مجاز.</p></div>
+            <div class="button-row"><button id="refreshAuditButton" class="button secondary" type="button">تازه‌سازی</button><button id="moreAuditButton" class="button secondary" type="button">بارگذاری بیشتر</button></div>
+          </div>
+          <div id="auditEmpty" class="empty hidden">رویدادی برای نمایش وجود ندارد.</div>
+          <div class="table-wrap"><table><thead><tr><th>زمان (UTC)</th><th>کاربر</th><th>عملیات</th><th>نوع موجودیت</th><th>شناسه موجودیت</th><th>فراداده</th></tr></thead><tbody id="auditTable"></tbody></table></div>
+        </section>
+      </div>
+    </section>
+    <footer>نسخه پایه توسعه · هر عملیات سمت سرور مجوزسنجی و ثبت ممیزی می‌شود. داده‌های این محیط آزمایشی هستند.</footer>
+  </main>
+</body>
+</html>
