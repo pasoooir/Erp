@@ -59,7 +59,7 @@ function cookieValue(request, name) {
   return "";
 }
 function sessionCookie(token, maxAge = SESSION_SECONDS) {
-  return `${COOKIE_NAME}=${token}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+  return `${COOKIE_NAME}=${token}; Path=/api; HttpOnly; Secure; SameSite=None; Max-Age=${maxAge}`;
 }
 function corsHeaders(request, env) {
   const origin = request.headers.get("origin");
@@ -521,16 +521,7 @@ async function route(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith("/api/")) {
-      const response = await env.ASSETS.fetch(request);
-      const headers = new Headers(response.headers);
-      headers.set("x-content-type-options", "nosniff");
-      headers.set("referrer-policy", "strict-origin-when-cross-origin");
-      headers.set("x-frame-options", "DENY");
-      headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
-      headers.set("content-security-policy", "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
-      return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
-    }
+    if (!url.pathname.startsWith("/api/")) return fail(404, "not_found", "مسیر API پیدا نشد.");
     const cors = corsHeaders(request, env);
     if (cors === null) return fail(403, "origin_denied", "مبدأ درخواست مجاز نیست.");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: {
