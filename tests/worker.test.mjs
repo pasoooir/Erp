@@ -121,7 +121,7 @@ test("login failure is generic, successful login issues a session, logout revoke
 });
 test("allows the exact GitHub Pages bootstrap preflight headers", async () => {
   const { call } = harness();
-  const response = await call("/api/v1/auth/bootstrap",
+  const response = await call("/api/v1/auth/bootstrap", {
     method: "OPTIONS",
     headers: {
       origin: "https://pasoooir.github.io",
