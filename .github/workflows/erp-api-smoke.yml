@@ -1,0 +1,72 @@
+name: ERP live API smoke test
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/erp-api-smoke.yml"
+      - "src/**"
+      - "wrangler.toml"
+      - "public/modules/erp-shell/erp-shell.js"
+      - "docs/ERP_API_DEPLOYMENT.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-api-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check deployed health endpoint
+        env:
+          API_BASE: https://erp-api.pasoooir-erp.workers.dev
+        run: |
+          set -euo pipefail
+          health="$(curl --fail-with-body --silent --show-error "$API_BASE/api/health")"
+          printf '%s' "$health" | node -e '
+            let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+              const p=JSON.parse(s);
+              if(p?.data?.status!=="ok" || p?.data?.database!=="connected") {
+                console.error("Unexpected health payload:",p); process.exit(1);
+              }
+              console.log("Live API health and D1 connectivity passed.");
+            });
+          '
+      - name: Check bootstrap status endpoint without changing data
+        env:
+          API_BASE: https://erp-api.pasoooir-erp.workers.dev
+        run: |
+          set -euo pipefail
+          status="$(curl --fail-with-body --silent --show-error "$API_BASE/api/v1/auth/status")"
+          printf '%s' "$status" | node -e '
+            let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+              const p=JSON.parse(s);
+              if(typeof p?.data?.bootstrap_required!=="boolean") {
+                console.error("Unexpected auth status payload:",p); process.exit(1);
+              }
+              console.log("Bootstrap status endpoint passed.");
+            });
+          '
+      - name: Verify CORS rejects untrusted origins
+        env:
+          API_BASE: https://erp-api.pasoooir-erp.workers.dev
+        run: |
+          set -euo pipefail
+          code="$(curl --silent --output /tmp/denied.json --write-out '%{http_code}' -H 'Origin: https://attacker.example' "$API_BASE/api/v1/auth/status")"
+          test "$code" = "403"
+          echo "Untrusted Origin is denied."
+      - name: Verify credentialed CORS preflight for GitHub Pages
+        env:
+          API_BASE: https://erp-api.pasoooir-erp.workers.dev
+        run: |
+          set -euo pipefail
+          code="$(curl --silent --output /dev/null --dump-header /tmp/preflight.headers --write-out '%{http_code}' -X OPTIONS \
+            -H 'Origin: https://pasoooir.github.io' \
+            -H 'Access-Control-Request-Method: GET' \
+            -H 'Access-Control-Request-Headers: content-type' \
+            "$API_BASE/api/v1/auth/status")"
+          test "$code" = "204"
+          grep -qi '^access-control-allow-origin: https://pasoooir.github.io' /tmp/preflight.headers
+          grep -qi '^access-control-allow-credentials: true' /tmp/preflight.headers
+          echo "GitHub Pages credentialed CORS preflight passed."
