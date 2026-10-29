@@ -47,7 +47,7 @@
 
 ## شواهد فعلی و محدودیت‌ها
 
-- [CI 40717318032](https://github.com/pasoooir/Erp/actions/runs/40717318032) سبز است: ۱۳ آزمون Node، migrationهای 0001/0002 روی D1 محلی و smoke با Wrangler/Chromium؛ شامل scope کاربر، جلوگیری از دسترسی بین شرکت‌ها و revoke نشست.
+- [CI 40824985340](https://github.com/pasoooir/Erp/actions/runs/40824985340) سبز است: syntax، تست‌های Worker/D1، migrationهای 0001–0003 روی D1 محلی و smoke با Wrangler/Chromium؛ شامل ورود با نام کاربری، نشست، scope کاربر، جلوگیری از دسترسی بین شرکت‌ها، revoke نشست، RTL و نمایش موبایل. این نتیجه فقط محیط محلی CI را اثبات می‌کند.
 - این نتیجه به معنی انتشار یا مهاجرت راه‌دور نیست. هیچ Worker منتشر نشده، هیچ D1 راه‌دور تغییر نکرده و هیچ Secret چرخانده نشده است.
 - باقی‌مانده‌ها: UI گزارش ممیزی و فیلترهای آن، ویرایش نقش/محدوده کاربران، دعوت و تأیید ایمیل، بازیابی رمز، MFA، مدیریت نشست‌های چنددستگاهی، گزارش ممیزی، آزمون ماتریس همه نقش‌ها و pagination کامل.
 - Cloudflare API از PR #1 جداگانه آزمایش شده؛ فهرست D1/Workers/Pages/KV و SQL آزمایشی موفق‌اند، اما repository variable `CLOUDFLARE_ACCOUNT_ID` در Workflow خالی است و R2 با HTTP 403 پاسخ داده است.
