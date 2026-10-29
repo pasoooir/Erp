@@ -30,7 +30,7 @@
 
 - شاخه کاری: `feature/erp-user-role-scope-edit`.
 - API ویرایش `PATCH /api/v1/users/{id}` در این شاخه وجود دارد؛ رابط فعلی هنوز فرم ویرایش نقش/محدوده را ارائه نمی‌کند.
-- رابط مدیر برای انتخاب نقش و محدوده و ارسال `PATCH /api/v1/users/{id}` در `public/index.html` و `public/app.js` موجود است.
+- رابط مدیر برای انتخاب نقش و محدوده و ارسال `PATCH /api/v1/users/{id}` در `public/modules/erp-shell/erp-shell.js` و `public/index.html` موجود است.
 - CI اجرای [40747049884](https://github.com/pasoooir/Erp/actions/runs/40747049884) پس از تغییرات موفق شد: بررسی نحو JS، آزمون‌های Worker/D1، migration محلی و اجرای Worker روی Cloudflare runtime محلی همگی سبز هستند.
 - رفع مسیر assetها: لینک CSS و JavaScript از مسیر ریشه دامنه به مسیر نسبی تغییر کرد تا هنگام میزبانی زیرمسیر GitHub Pages مانند `/Erp/` فایل‌ها از ریشه دامنه درخواست نشوند. این تغییر هنوز نیازمند CI مستقل و بررسی انتشار Pages است.
 
@@ -59,10 +59,10 @@
 ## ERP-AUTH-UI-001 — بازطراحی فرم ورود
 
 - محدوده: فقط تجربه ورود؛ هیچ قرارداد API یا سیاست احراز هویت سمت سرور تغییر نکرده است.
-- تغییرات واقعی در شاخه `feature/erp-user-role-scope-edit`: `public/index.html` (پوسته)، `public/modules/auth/login/login-form.html`, `login-form.css`, `login-form.js` (ماژول ورود)، `public/modules/erp-shell/erp-shell.css`, `erp-shell.js` (پوسته ERP)، `src/modules/auth/login/login-handler.js`, `migrations/0003_auth_username.sql` و تست‌های احراز هویت.
+- تغییرات واقعی در شاخه `feature/erp-user-role-scope-edit`: `public/index.html` (پوسته)، `public/modules/auth/login/login-form.html`, `login-form.css`, `login-form.js` (ماژول ورود)، `public/modules/erp-shell/erp-shell.css`, `erp-shell.js` (پوسته ERP)، `src/modules/auth/login/login-handler.js`, `migrations/0003_auth_username.sql`, `tests/worker.test.mjs` و `tests/worker-runtime-smoke.mjs`.
 - commitهای تغییر: `95f9d5630e48b525556db09a0544a89bd74acaf1`, `9a011c652891592b52dcff29757afe87ed3630b6`, `304eaacb1c7e51a672f21553d735a7ad061632c6`.
 - معیارهای پیاده‌سازی: ورود با نام کاربری یا ایمیل و رمز عبور؛ username یکتا در D1 با migration افزایشی؛ bootstrap و ساخت کاربر با نام کاربری؛ حفظ cookie امن، هش رمز، rate limit و audit؛ فرم ورود به‌صورت HTML/CSS/JS اختصاصی در پوشه ماژول.
-- وضعیت: `in_progress` — کد ثبت شده؛ اجرای CI مخصوص این تغییر و تأیید بصری مرورگر هنوز لازم است. تا زمان موفقیت تست‌ها و بررسی صفحه در موبایل/دسکتاپ، تکمیل‌شده محسوب نمی‌شود.
+- وضعیت: `in_progress` — کد ثبت شده؛ CI تازه [40824830801](https://github.com/pasoooir/Erp/actions/runs/40824830801) در صف اجراست؛ پس از آن باید نتیجه Chromium و تست‌های API بررسی و خطاها اصلاح شوند. تا زمان موفقیت تست‌ها و بررسی صفحه در موبایل/دسکتاپ، تکمیل‌شده محسوب نمی‌شود.
 - ممنوعیت‌های رعایت‌شده: بدون merge به `main`، deploy، تغییر Secret یا migration راه‌دور.
 
 
