@@ -28,6 +28,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+      - name: Verify published entry points
+        run: |
+          test -s public/index.html
+          test -s public/bootstrap-admin.html
+          test -s public/bootstrap-admin/index.html
+          test -f public/.nojekyll
       - name: Upload ERP frontend
         uses: actions/upload-pages-artifact@v3
         with:
