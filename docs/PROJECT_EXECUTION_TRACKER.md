@@ -62,7 +62,7 @@
 - تغییرات واقعی در شاخه `feature/erp-user-role-scope-edit`: `public/index.html` (پوسته)، `public/modules/auth/login/login-form.html`, `login-form.css`, `login-form.js` (ماژول ورود)، `public/modules/erp-shell/erp-shell.css`, `erp-shell.js` (پوسته ERP)، `src/modules/auth/login/login-handler.js`, `migrations/0003_auth_username.sql`, `tests/worker.test.mjs` و `tests/worker-runtime-smoke.mjs`.
 - commitهای تغییر: `95f9d5630e48b525556db09a0544a89bd74acaf1`, `9a011c652891592b52dcff29757afe87ed3630b6`, `304eaacb1c7e51a672f21553d735a7ad061632c6`.
 - معیارهای پیاده‌سازی: ورود با نام کاربری یا ایمیل و رمز عبور؛ username یکتا در D1 با migration افزایشی؛ bootstrap و ساخت کاربر با نام کاربری؛ حفظ cookie امن، هش رمز، rate limit و audit؛ فرم ورود به‌صورت HTML/CSS/JS اختصاصی در پوشه ماژول.
-- وضعیت: `in_progress` — کد ثبت شده؛ CI تازه [40824830801](https://github.com/pasoooir/Erp/actions/runs/40824830801) در صف اجراست؛ پس از آن باید نتیجه Chromium و تست‌های API بررسی و خطاها اصلاح شوند. تا زمان موفقیت تست‌ها و بررسی صفحه در موبایل/دسکتاپ، تکمیل‌شده محسوب نمی‌شود.
+- وضعیت: `completed` — CI [40824985340](https://github.com/pasoooir/Erp/actions/runs/40824985340) سبز: syntax، تست‌های Worker/D1، اعمال migration روی D1 محلی و smoke مرورگر/Cloudflare runtime موفق؛ تست موبایل RTL و ورود با نام کاربری در smoke اجرا شد. تا زمان موفقیت تست‌ها و بررسی صفحه در موبایل/دسکتاپ، تکمیل‌شده محسوب نمی‌شود.
 - ممنوعیت‌های رعایت‌شده: بدون merge به `main`، deploy، تغییر Secret یا migration راه‌دور.
 
 
