@@ -1,6 +1,6 @@
 (async () => {
   const scriptUrl = document.currentScript?.src || new URL("./modules/erp-shell/erp-shell.js", location.href).href;
-  const API_BASE = "https://erp-api.pasoooir-erp.workers.dev";
+  const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? location.origin : "https://erp-api.pasoooir-erp.workers.dev";
   const $ = id => document.getElementById(id);
   const authMount = $("authFormMount");
   const authFragmentResponse = await fetch(new URL("../auth/login/login-form.html", scriptUrl), { credentials: "same-origin" });
