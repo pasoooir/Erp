@@ -105,7 +105,7 @@ async function sessionUser(request, env) {
   const token = cookieValue(request, COOKIE_NAME);
   if (!/^[A-Za-z0-9_-]{40,50}$/.test(token)) return null;
   const tokenHash = await sha256(token);
-  const row = await env.DB.prepare(`SELECT u.id, u.email, u.display_name, u.status,
+  const row = await env.DB.prepare(`SELECT u.id, u.username, u.email, u.display_name, u.status,
       GROUP_CONCAT(r.name, ',') AS roles
     FROM sessions s JOIN users u ON u.id=s.user_id
     LEFT JOIN user_roles ur ON ur.user_id=u.id LEFT JOIN roles r ON r.id=ur.role_id
@@ -191,7 +191,7 @@ async function hasPermission(env, user, resource, action, orgUnitId = null) {
   return Boolean(scoped);
 }
 async function safeUser(env, id) {
-  return env.DB.prepare(`SELECT u.id, u.email, u.display_name, u.status,
+  return env.DB.prepare(`SELECT u.id, u.username, u.email, u.display_name, u.status,
       GROUP_CONCAT(DISTINCT r.name) AS roles,
       GROUP_CONCAT(DISTINCT s.org_unit_id) AS scope_ids,
       GROUP_CONCAT(DISTINCT ou.code || ' — ' || ou.name) AS scopes,
@@ -202,7 +202,7 @@ async function safeUser(env, id) {
 }
 async function listUsers(env, user) {
   if (!user.roles.includes("admin")) return fail(403, "forbidden", "فقط مدیر سامانه می‌تواند کاربران را مشاهده کند.");
-  const result = await env.DB.prepare(`SELECT u.id, u.email, u.display_name, u.status,
+  const result = await env.DB.prepare(`SELECT u.id, u.username, u.email, u.display_name, u.status,
       GROUP_CONCAT(DISTINCT r.name) AS roles,
       GROUP_CONCAT(DISTINCT s.org_unit_id) AS scope_ids,
       GROUP_CONCAT(DISTINCT ou.code || ' — ' || ou.name) AS scopes,
