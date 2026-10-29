@@ -7,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import worker from "../src/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
+const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql","0003_auth_username.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
 class Statement {
   constructor(db, sql, values = []) { this.db=db; this.sql=sql; this.values=values; }
   bind(...values) { return new Statement(this.db, this.sql, values); }
@@ -111,8 +111,9 @@ test("login failure is generic, successful login issues a session, logout revoke
   const wrong=await call("/api/v1/auth/login",json({email:"admin@example.com",password:"incorrect-password"}));
   assert.equal(wrong.status,401);
   assert.equal((await parse(wrong)).error.code,"invalid_credentials");
-  const login=await call("/api/v1/auth/login",json({email:"admin@example.com",password:"strong-password-123"}));
+  const login=await call("/api/v1/auth/login",json({username:"admin",password:"strong-password-123"}));
   assert.equal(login.status,200,await login.text());
+  assert.equal((await parse(login)).data.username,"admin");
   const cookie=cookieFrom(login);
   assert.equal((await call("/api/v1/auth/me",{headers:{cookie}})).status,200);
   await call("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
