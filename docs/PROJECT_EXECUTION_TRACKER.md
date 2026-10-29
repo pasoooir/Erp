@@ -1,9 +1,9 @@
 # دفتر اجرای پروژه ERP — وضعیت مبتنی بر شواهد
 
-آخرین بازبینی: 2026-10-29 (به‌روزرسانی رابط ورود)  
+آخرین بازبینی: 2026-10-29 (استقرار API و D1 اختصاصی)  
 مخزن: [pasoooir/Erp](https://github.com/pasoooir/Erp)  
 شاخه مرجع: `main`  
-آخرین commit بررسی‌شده در main: `d28965723a99e14df5dfd3e68c1d77dd68d0632e`
+آخرین commit پایه بررسی‌شده در main: `a2163f5fc61f67f520ee7b556e7ce458d3dbd933`
 
 ## خلاصه اجرایی
 
@@ -13,7 +13,7 @@
 - Worker با نام `erp-api` در `https://erp-api.pasoooir-erp.workers.dev` بارگذاری شد؛ Cloudflare پاسخ موفق برای upload، secret binding و فعال‌سازی workers.dev برگرداند. binding پایگاه داده به D1 جدید و CORS محدود به Origin رابط GitHub Pages تنظیم شد.
 - رابط ماژول ERP در شاخه کاری به API مستقل متصل شده و از `credentials: include` استفاده می‌کند. Cookie نشست برای ارتباط cross-site با `HttpOnly; Secure; SameSite=None` تنظیم شده است.
 - Secret راه‌اندازی اولیه به‌صورت Cloudflare Worker Secret با نام `BOOTSTRAP_SECRET` تنظیم شده؛ مقدار آن در مخزن یا مستندات ذخیره نشده است. مدیر اولیه هنوز ساخته نشده و باید مالک سامانه آن را یک‌بار از فرم bootstrap ایجاد کند.
-- وضعیت تأیید: ایجاد D1، اجرای schema، ثبت migrationها و بارگذاری Worker تأییدشده‌اند. درخواست HTTP end-to-end به دامنه workers.dev از محیط اجرای فعلی قابل انجام نبود؛ health، bootstrap و login در مرورگر واقعی هنوز نیازمند smoke test هستند. تا آن زمان API را «مستقرشده، اما end-to-end تأییدنشده» محسوب کنید.
+- وضعیت تأیید: [live API smoke run 40827200728](https://github.com/pasoooir/Erp/actions/runs/40827200728) برای health/D1، وضعیت bootstrap، رد Origin غیرمجاز و CORS معتبر سبز است؛ [foundation run 40827200720](https://github.com/pasoooir/Erp/actions/runs/40827200720) نیز تست واحد، migration محلی و smoke مرورگری bootstrap/login را گذرانده است. bootstrap مدیر در D1 واقعی عمداً اجرا نشده و به مالک سامانه واگذار شده است.
 - کل ERP، شامل ماژول‌های منابع انسانی، حقوق و دستمزد، موجودی، خرید، فروش، حسابداری، تولید، کیفیت، دارایی ثابت و گزارش‌های کامل، همچنان کار باقیمانده دارد؛ درصد کل پروژه از روی صرف استقرار این برش افزایش داده نشده است.
 
 ## استقرار D1 و API — 2026-10-29
@@ -22,8 +22,8 @@
 |---|---|---|---|---|
 | ERP-D1-PROD-001 | ساخت D1 اختصاصی EU بدون تغییر دیتابیس آزمایشی | Cloudflare D1 `erp-production-eu`, UUID `d33370d3-5bb9-4439-be1e-39467b903482` | completed | نگه‌داری از snapshot/backup طبق سیاست عملیاتی |
 | ERP-D1-MIG-001 | اجرای schema پایه و جلوگیری از اجرای تکراری migrationها | query موفق برای migrationهای 0001–0003؛ `d1_migrations` شامل سه نام migration؛ جدول‌های users, sessions, org_units, roles, user_roles, user_org_scopes, permissions, role_permissions, audit_events و login_attempts موجودند | completed | CI و migrationهای آتی را با همان D1 ID همگام نگه‌دار |
-| ERP-API-DEPLOY-001 | Worker با D1 binding، secret bootstrap و workers.dev فعال | Cloudflare API: upload HTTP 200؛ ثبت secret HTTP 201؛ فعال‌سازی subdomain HTTP 200؛ Worker ID `erp-api`, deployment `b024c836cc134195accf7d55623e792a` | in_progress | health/bootstrap/login را از مرورگر واقعی smoke-test کن |
-| ERP-PAGES-API-001 | رابط Pages از API مستقل استفاده کند و نشست cross-origin ارسال شود | `public/modules/erp-shell/erp-shell.js`: API base، `credentials: include`; Worker CORS محدود به Origin Pages و cookie Secure/HttpOnly/SameSite=None | in_progress | آزمون واقعی login/logout و کنترل Origin/CSRF |
+| ERP-API-DEPLOY-001 | Worker با D1 binding، secret bootstrap و workers.dev فعال | Cloudflare API: upload HTTP 200؛ ثبت secret HTTP 201؛ فعال‌سازی subdomain HTTP 200؛ Worker ID `erp-api`, deployment `7d9a0ba9e648423ebf38eddf59d80e71`; live smoke [40827200728](https://github.com/pasoooir/Erp/actions/runs/40827200728) سبز | completed | حفظ health/CORS smoke test در CI |
+| ERP-PAGES-API-001 | رابط Pages از API مستقل استفاده کند و نشست cross-origin ارسال شود | `public/modules/erp-shell/erp-shell.js`: API base، `credentials: include` و fallback به localhost در CI؛ [foundation browser smoke 40827200720](https://github.com/pasoooir/Erp/actions/runs/40827200720) و [live CORS smoke 40827200728](https://github.com/pasoooir/Erp/actions/runs/40827200728) سبز | completed | پس از Pages deploy، بررسی دستی مرورگر و محدودیت third-party cookies |
 | ERP-BOOTSTRAP-001 | ساخت یک‌باره مدیر بدون رمز پیش‌فرض و بدون secret در کد | `BOOTSTRAP_SECRET` در Worker Secret؛ endpoint bootstrap موجود | blocked | مالک سامانه باید کلید راه‌اندازی را در فرم خصوصی وارد و مدیر اولیه را ایجاد کند؛ secret را در repo یا چت عمومی ذخیره نکن |
 
 ## ردیابی اجرا
