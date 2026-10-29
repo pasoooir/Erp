@@ -81,7 +81,7 @@
       }
     } catch (error) {
       const detail = error instanceof TypeError ? "خطای شبکه/CORS (مرورگر اجازه خواندن پاسخ API را نداد)." : String(error?.message || error);
-      availability.textContent = "وضعیت سرور قابل بررسی نیست. " + detail + " آدرس API: " + API + "/api/v1/auth/status . فرم برای جلوگیری از ارسال اشتباه غیرفعال است.";
+      availability.textContent = "وضعیت سرور قابل بررسی نیست. " + detail + " مبدأ صفحه: " + location.origin + "؛ آدرس API: " + API + "/api/v1/auth/status . فرم برای جلوگیری از ارسال اشتباه غیرفعال است.";
       form.classList.add("hidden");
     }
   }
