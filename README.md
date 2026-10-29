@@ -84,7 +84,7 @@
 
 - داشبورد: [Gonchar.html](./Gonchar.html)
 - داده گانت: [erp-project.json](./erp-project.json)
-- tracker اجرایی (اگر در مخزن موجود است): [docs/PROJECT_EXECUTION_TRACKER.md](./docs/PROJECT_EXECUTION_TRACKER.md)
+- tracker اجرایی: [docs/PROJECT_EXECUTION_TRACKER.md](./docs/PROJECT_EXECUTION_TRACKER.md)
 
 داشبورد فعلی برای خواندن فایل JSON، مرور درخت شش‌سطحی، جست‌وجو، فیلتر، مشاهده جزئیات/وابستگی‌ها و خروجی CSV طراحی شده است. این صفحه به‌تنهایی سامانه ثبت و پیگیری اجرا نیست: فعلاً تغییرات را در سرور ذخیره نمی‌کند و جای GitHub Issues/PRs یا آزمون‌ها را نمی‌گیرد. پیش از اعلام کارکرد نهایی، بارگذاری واقعی داده، رفتار مرورگر، خطاهای بارگذاری و امکانات کلیدی را در محیط منتشرشده آزمایش کن. وجود فایل HTML یا معتبر بودن syntax جاوااسکریپت، به‌تنهایی اثبات عملکرد کامل داشبورد نیست.
 
@@ -101,3 +101,18 @@
 7. چه چیزی باقی مانده یا مسدود است؟
 
 **هدف، تولید بیشترین کد یا بیشترین تعداد وظیفه نیست؛ هدف، تحویل قابلیت‌های واقعی، یکپارچه، امن، آزموده‌شده و قابل ردیابی است.**
+
+
+## پایه عملیاتی ERP (شاخه توسعه)
+
+شاخه [`feature/erp-auth-org-units`](https://github.com/pasoooir/Erp/tree/feature/erp-auth-org-units) یک برش عمودی آزمایشی شامل Worker، دو D1 migration، ورود/نشست امن، bootstrap یک‌باره مدیر، ممیزی، مدیریت کاربران، نقش‌های RBAC و scope-based access برای ساختار سازمانی به‌همراه رابط فارسی RTL ارائه می‌کند. CI سبز [40717318032](https://github.com/pasoooir/Erp/actions/runs/40717318032) شامل ۱۳ آزمون Node و smoke با Wrangler/D1 محلی و Chromium است. راهنمای اجرا، API و محدودیت‌های باقی‌مانده در [`docs/ERP_FOUNDATION.md`](./docs/ERP_FOUNDATION.md) ثبت شده‌اند. این PR هنوز Draft است؛ هیچ Worker منتشر نشده و هیچ D1 راه‌دور یا Production تغییر نکرده است.
+
+
+## قانون معماری اجباری: پوشه و نام‌گذاری اختصاصی هر ماژول
+
+- هر ماژول/زیرماژول باید پوشه مستقل برای UI، منطق سمت سرور، آزمون‌ها و مستندات مربوط داشته باشد.
+- از نام‌های مبهم و عمومی مثل `app.js`, `script.js`, `styles.css` یا `utils.js` برای فایل‌های ماژول‌ها استفاده نکن؛ نام فایل باید کاربرد و مالکیت آن را روشن کند.
+- فایل‌های پوسته مشترک نیز نام توصیفی و مسیر مستقل دارند؛ مثال: `public/modules/erp-shell/erp-shell.js` و `erp-shell.css`.
+- نمونه ماژول ورود: `public/modules/auth/login/login-form.html`, `login-form.css`, `login-form.js` و سرویس Worker در `src/modules/auth/login/login-handler.js`.
+- هنگام انتقال فایل، تمام importها، مسیرهای Pages، تست‌ها، workflowها و مستندات را همان تغییر اصلاح کن؛ فایل قدیمی/تکراری بدون مصرف باقی نگذار.
+- این قاعده برای تمام توسعه‌های بعدی و تمام گفتگوهای پروژه الزام‌آور است.
