@@ -79,8 +79,9 @@
         availability.textContent = "راه‌اندازی اولیه تکمیل شده یا وضعیت آن قابل تأیید نیست. این فرم غیرفعال است.";
         form.classList.add("hidden");
       }
-    } catch {
-      availability.textContent = "وضعیت سرور قابل بررسی نیست. اتصال API و تنظیمات CORS را بررسی کنید؛ فرم برای جلوگیری از ارسال اشتباه غیرفعال مانده است.";
+    } catch (error) {
+      const detail = error instanceof TypeError ? "خطای شبکه/CORS (مرورگر اجازه خواندن پاسخ API را نداد)." : String(error?.message || error);
+      availability.textContent = "وضعیت سرور قابل بررسی نیست. " + detail + " مبدأ صفحه: " + location.origin + "؛ آدرس API: " + API + "/api/v1/auth/status . فرم برای جلوگیری از ارسال اشتباه غیرفعال است.";
       form.classList.add("hidden");
     }
   }
