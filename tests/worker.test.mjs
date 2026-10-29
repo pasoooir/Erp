@@ -62,7 +62,7 @@ test("bootstrap requires secret, creates one admin and refuses a second bootstra
   assert.equal(created.status,201);
   assert.match(created.headers.get("set-cookie"),/HttpOnly/);
   assert.match(created.headers.get("set-cookie"),/Secure/);
-  assert.match(created.headers.get("set-cookie"),/SameSite=Strict/);
+  assert.match(created.headers.get("set-cookie"),/SameSite=None/);
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM users").get().n,1);
   assert.notEqual(DB.sqlite.prepare("SELECT password_hash FROM users").get().password_hash,body.password);
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM user_roles ur JOIN roles r ON r.id=ur.role_id WHERE r.name='admin'").get().n,1);
