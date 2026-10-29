@@ -119,6 +119,34 @@ test("login failure is generic, successful login issues a session, logout revoke
   await call("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
   assert.equal((await call("/api/v1/auth/me",{headers:{cookie}})).status,401);
 });
+test("allows the exact GitHub Pages bootstrap preflight headers", async () => {
+  const response = await call("/api/v1/auth/bootstrap", {
+    method: "OPTIONS",
+    headers: {
+      origin: "https://pasoooir.github.io",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "content-type,x-bootstrap-secret"
+    }
+  });
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get("access-control-allow-origin"), "https://pasoooir.github.io");
+  assert.equal(response.headers.get("access-control-allow-credentials"), "true");
+  assert.match(response.headers.get("access-control-allow-headers"), /content-type/i);
+  assert.match(response.headers.get("access-control-allow-headers"), /x-bootstrap-secret/i);
+});
+
+test("rejects unapproved headers in CORS preflight", async () => {
+  const response = await call("/api/v1/auth/bootstrap", {
+    method: "OPTIONS",
+    headers: {
+      origin: "https://pasoooir.github.io",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "content-type,x-evil-header"
+    }
+  });
+  assert.equal(response.status, 403);
+});
+
 test("rejects cross-origin requests and applies browser security headers", async () => {
   const {call}=harness();
   const denied=await call("/api/v1/auth/status",{headers:{origin:"https://attacker.example"}});
