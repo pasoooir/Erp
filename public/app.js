@@ -152,10 +152,11 @@
     try{await api("/api/v1/auth/bootstrap",{method:"POST",headers:{"x-bootstrap-secret":secret},body:JSON.stringify(data)});forms.bootstrap.reset();notice("مدیر اولیه ایجاد شد.","success");await refreshAuth();}
     catch(e){notice(e.message,"error");}finally{submit.disabled=false;}
   });
+  $("toggleLoginPassword").addEventListener("click",()=>{const input=$("loginPassword"),show=input.type==="password";input.type=show?"text":"password";$("toggleLoginPassword").textContent=show?"پنهان":"نمایش";$("toggleLoginPassword").setAttribute("aria-pressed",String(show));input.focus();});
   forms.login.addEventListener("submit",async event=>{
-    event.preventDefault();const submit=forms.login.querySelector("button");submit.disabled=true;
-    try{await api("/api/v1/auth/login",{method:"POST",body:JSON.stringify(formData(forms.login))});forms.login.reset();await refreshAuth();}
-    catch(e){notice(e.message,"error");}finally{submit.disabled=false;}
+    event.preventDefault();const submit=forms.login.querySelector("button[type=submit]");submit.disabled=true;submit.querySelector("span").textContent="در حال بررسی اطلاعات…";
+    try{await api("/api/v1/auth/login",{method:"POST",body:JSON.stringify(formData(forms.login))});forms.login.reset();$("loginPassword").type="password";$("toggleLoginPassword").textContent="نمایش";$("toggleLoginPassword").setAttribute("aria-pressed","false");await refreshAuth();}
+    catch(e){notice(e.message,"error");}finally{submit.disabled=false;submit.querySelector("span").textContent="ورود امن به سامانه";}
   });
   forms.unit.addEventListener("submit",async event=>{
     event.preventDefault();const submit=forms.unit.querySelector("button");submit.disabled=true;
