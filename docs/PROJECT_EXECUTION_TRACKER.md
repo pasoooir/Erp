@@ -79,7 +79,7 @@
 > این بخش جایگزین برداشت‌های قدیمی بالا درباره وضعیت `main` است. اعداد و وضعیت‌های زیر فقط به تغییراتی اشاره دارند که در commit ادغام‌شده ثبت شده‌اند؛ به معنی تکمیل ERP کارخانه یا آماده‌بودن همه ماژول‌ها نیستند.
 
 - **ادغام در main:** PR #7 با موفقیت squash-merge شد؛ merge commit: `c1b3e9968719492adf0f859a403d8a683babcad6`.
-- **CI قبل از ادغام:** اجرای ERP foundation checks برای head `fb1821d0e4edb166ee480809d3ae349df514a523` موفق شد: [GitHub Actions run 40825845164](https://github.com/pasoooir/Erp/actions/runs/40825845164). پس از ادغام نیز اجرای CI روی commit ادغام‌شده موفق شد: [run 40825987275](https://github.com/pasoooir/Erp/actions/runs/40825987275).
+- **CI قبل از ادغام:** اجرای ERP foundation checks برای head `fb1821d0e4edb166ee480809d3ae349df514a523` موفق شد: [GitHub Actions run 40825845164](https://github.com/pasoooir/Erp/actions/runs/40825845164). پس از ادغام CI روی commit ادغام‌شده موفق شد: [run 40825987275](https://github.com/pasoooir/Erp/actions/runs/40825987275). پس از افزودن entrypoint سازگار با Pages نیز بررسی کامل syntax، آزمون‌های واحد، مهاجرت محلی D1 و runtime مرورگر موفق شد: [run 40826135326](https://github.com/pasoooir/Erp/actions/runs/40826135326).
 - **رابط وب:** فایل‌های ورود و پوسته در `public/modules/auth/login/` و `public/modules/erp-shell/` قرار دارند؛ فایل‌های تک‌تکه قدیمی `public/app.js` و `public/styles.css` حذف شده‌اند.
 - **پایه API:** کد Worker در `src/index.js` و handler ورود در `src/modules/auth/login/login-handler.js` وجود دارد. آزمون‌های محلی/CI روی migrationها و runtime انجام می‌شوند؛ این به‌تنهایی اثبات اتصال به دیتابیس عملیاتی نیست.
 - **انتشار صفحات:** workflow انتشار `.github/workflows/deploy-pages.yml` پوشه `public/` را منتشر کرده و run [40825987358](https://github.com/pasoooir/Erp/actions/runs/40825987358) با موفقیت پایان یافته است؛ GitHub Actions گزارش داده URL محیط `https://pasoooir.github.io/Erp/` است. برای سازگاری با تنظیمات خودکار Pages که از ریشه شاخه نیز build می‌گیرد، `index.html` ریشه با مسیرهای `public/modules/` و فایل‌های `.nojekyll` اضافه شده‌اند. run بعدی انتشار پس از این اصلاحات نیز موفق شد: [40826135321](https://github.com/pasoooir/Erp/actions/runs/40826135321).
@@ -105,3 +105,5 @@
 - فایل `index.html` در ریشه شاخه برای حالتی اضافه شده که GitHub Pages به‌صورت branch/Jekyll تنظیم شده باشد؛ در این حالت assetها از `public/modules/` بارگیری می‌شوند.
 - فایل‌های `.nojekyll` در ریشه و `public/` افزوده شدند تا Jekyll فایل‌های استاتیک ماژول‌ها را حذف نکند.
 - workflow انتشار artifact از `public/` جداگانه موفق شده است؛ runهای انتشار فوق شاهد موفقیت سمت GitHub هستند، نه اثبات کارکرد ورود به D1.
+
+- **پاک‌سازی PRهای تکراری:** PRهای #3، #4 و #6 پس از ادغام مجموع تغییراتشان در PR #7 با توضیح روشن بسته شدند؛ PRهای نامرتبط #1 و #2 جداگانه باز مانده‌اند.
