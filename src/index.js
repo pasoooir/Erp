@@ -156,7 +156,12 @@ async function bootstrap(request, env) {
       env.DB.prepare("INSERT INTO audit_events (id, actor_user_id, action, entity_type, entity_id, metadata_json) SELECT ?, ?, 'auth.bootstrap_completed', 'user', ?, ? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)")
         .bind(crypto.randomUUID(), id, id, JSON.stringify({ email }), id)
     ]);
-  } catch {
+  } catch (error) {
+    // Log only the database error class/message; never log request bodies, credentials, or secrets.
+    console.error("auth.bootstrap_batch_failed", {
+      name: error instanceof Error ? error.name : "UnknownError",
+      message: String(error?.message || error || "unknown").slice(0, 240)
+    });
     return fail(500, "bootstrap_failed", "راه‌اندازی اولیه انجام نشد؛ خطای داخلی ثبت شد.");
   }
   const user = await env.DB.prepare("SELECT id FROM users WHERE id=?").bind(id).first();
