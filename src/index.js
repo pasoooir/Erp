@@ -521,7 +521,14 @@ async function route(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith("/api/")) return fail(404, "not_found", "مسیر API پیدا نشد.");
+    if (!url.pathname.startsWith("/api/")) return new Response("Not found", { status: 404, headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "x-frame-options": "DENY",
+      "permissions-policy": "camera=(), microphone=(), geolocation=()",
+      "content-security-policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+    }});
     const cors = corsHeaders(request, env);
     if (cors === null) return fail(403, "origin_denied", "مبدأ درخواست مجاز نیست.");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: {
