@@ -112,7 +112,7 @@ test("login failure is generic, successful login issues a session, logout revoke
   assert.equal(wrong.status,401);
   assert.equal((await parse(wrong)).error.code,"invalid_credentials");
   const login=await call("/api/v1/auth/login",json({username:"admin",password:"strong-password-123"}));
-  assert.equal(login.status,200,await login.text());
+  assert.equal(login.status,200);
   assert.equal((await parse(login)).data.username,"admin");
   const cookie=cookieFrom(login);
   assert.equal((await call("/api/v1/auth/me",{headers:{cookie}})).status,200);
