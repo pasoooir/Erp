@@ -15,7 +15,18 @@
   </header>
   <main class="layout">
     <section id="notice" class="notice" role="status" aria-live="polite">در حال بررسی وضعیت سامانه…</section>
-    <section id="authPanel" class="panel hidden">
+    <section id="authPanel" class="auth-panel hidden">
+      <aside class="auth-brand" aria-label="معرفی سامانه">
+        <div class="auth-brand-mark">ERP<span>+</span></div>
+        <p class="eyebrow">ENTERPRISE RESOURCE PLANNING</p>
+        <h2>یک کارخانه،<br>یک سامانه یکپارچه</h2>
+        <p class="auth-brand-copy">مدیریت امن عملیات، منابع و ساختار سازمانی در یک فضای کاری واحد.</p>
+        <div class="auth-feature"><span aria-hidden="true">✓</span><div><strong>دسترسی کنترل‌شده</strong><small>نقش‌ها و محدوده‌های سازمانی</small></div></div>
+        <div class="auth-feature"><span aria-hidden="true">✓</span><div><strong>ثبت رویدادهای امنیتی</strong><small>قابلیت پیگیری عملیات مهم</small></div></div>
+        <div class="auth-brand-foot"><span class="auth-status-dot"></span> درگاه ورود امن · نسخه عملیاتی پایه</div>
+      </aside>
+      <div class="auth-card">
+      <div class="auth-card-top"><span class="auth-lock" aria-hidden="true">▣</span><span>محیط امن سازمانی</span></div>
       <div class="section-heading"><div><p class="eyebrow">دسترسی امن</p><h2 id="authTitle">ورود به سامانه</h2><p id="authDescription">برای مشاهده اطلاعات سازمانی وارد شوید.</p></div></div>
       <form id="bootstrapForm" class="form hidden" autocomplete="on">
         <label>کلید راه‌اندازی اولیه<input name="bootstrap_secret" type="password" autocomplete="off" minlength="32" required><small>این کلید فقط در همین درخواست ارسال می‌شود و در مرورگر ذخیره نمی‌شود.</small></label>
@@ -25,10 +36,13 @@
         <button class="button" type="submit">ایجاد نخستین مدیر</button>
       </form>
       <form id="loginForm" class="form hidden" autocomplete="on">
-        <label>ایمیل<input name="email" type="email" maxlength="254" autocomplete="username" required></label>
-        <label>رمز عبور<input name="password" type="password" maxlength="128" autocomplete="current-password" required></label>
-        <button class="button" type="submit">ورود</button>
+        <label>ایمیل سازمانی<input name="email" type="email" maxlength="254" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" dir="ltr" placeholder="name@company.com" required></label>
+        <label>رمز عبور<div class="password-control"><input id="loginPassword" name="password" type="password" maxlength="128" autocomplete="current-password" dir="ltr" placeholder="رمز عبور خود را وارد کنید" required><button id="toggleLoginPassword" class="password-toggle" type="button" aria-label="نمایش رمز عبور" aria-pressed="false">نمایش</button></div></label>
+        <div class="login-help"><span class="login-help-icon" aria-hidden="true">i</span><span>اطلاعات ورود شما به‌صورت امن ارسال می‌شود.</span></div>
+        <button class="button login-submit" type="submit"><span>ورود امن به سامانه</span><span aria-hidden="true">←</span></button>
       </form>
+      <div class="auth-card-footer">با ورود، استفاده از سامانه مطابق سطح دسترسی حساب شما خواهد بود.</div>
+      </div>
     </section>
     <section id="appPanel" class="hidden">
       <div class="welcome panel"><div><p class="eyebrow">فضای کاری</p><h2 id="welcomeTitle">ساختار سازمانی</h2><p id="welcomeText">اطلاعات از پایگاه داده خوانده می‌شود.</p></div><span class="live"><i></i> اتصال API</span></div>
