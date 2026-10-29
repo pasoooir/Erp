@@ -42,7 +42,7 @@ jobs:
       - name: Install Chromium for UI integration
         run: npx playwright install --with-deps chromium
       - name: Apply D1 migration to local SQLite
-        run: CI=true npx wrangler d1 migrations apply erp-dev --local
+        run: CI=true npx wrangler d1 migrations apply erp-production-eu --local
       - name: Exercise Worker on local Cloudflare runtime
         env:
           BOOTSTRAP_SECRET: ci-only-bootstrap-secret-for-local-runtime

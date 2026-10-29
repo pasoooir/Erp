@@ -1,5 +1,6 @@
 (async () => {
   const scriptUrl = document.currentScript?.src || new URL("./modules/erp-shell/erp-shell.js", location.href).href;
+  const API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname) ? location.origin : "https://erp-api.pasoooir-erp.workers.dev";
   const $ = id => document.getElementById(id);
   const authMount = $("authFormMount");
   const authFragmentResponse = await fetch(new URL("../auth/login/login-form.html", scriptUrl), { credentials: "same-origin" });
@@ -13,7 +14,7 @@
   const roleLabels={admin:"مدیر سراسری",org_manager:"مدیر واحد سازمانی",operator:"اپراتور",reader:"مشاهده‌گر"};
   function notice(message,kind=""){const el=$("notice");el.textContent=message;el.className="notice"+(kind?" "+kind:"");}
   async function api(path,options={},includeMeta=false){
-    const response=await fetch(path,{credentials:"same-origin",...options,headers:{...(options.body?{"content-type":"application/json"}:{}),...(options.headers||{})}});
+    const response=await fetch(new URL(path,API_BASE),{credentials:"include",...options,headers:{...(options.body?{"content-type":"application/json"}:{}),...(options.headers||{})}});
     let payload;try{payload=await response.json();}catch{throw new Error("پاسخ معتبر از سرور دریافت نشد.");}
     if(!response.ok)throw new Error(payload?.error?.message||"درخواست ناموفق بود.");
     return includeMeta?payload:payload.data;

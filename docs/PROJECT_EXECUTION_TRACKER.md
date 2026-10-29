@@ -7,11 +7,24 @@
 
 ## خلاصه اجرایی
 
-- در `main` هنوز برنامه ERP عملیاتی وجود ندارد؛ درخت کامل فقط `Gonchar.html`، `README.md` و `erp-project.json` را نشان می‌دهد.
-- برش عمودی ERP در شاخه PR #3 اکنون شامل احراز هویت، نشست، D1 schema، ساختار سازمانی، scope-based RBAC، مدیریت کاربر و UI فارسی RTL است؛ CI محلی/مرورگری آن موفق است، اما PR ادغام نشده و Production منتشر نشده است.
-- در شاخه PR #2، گانت به شواهد PR #3 متصل شده است. ۱۸ وظیفه سطح ۶ ردیابی شده‌اند؛ ۷ برگ completed و ۱۱ برگ in_progress. پیشرفت برنامه‌ریزی محاسبه‌شده در این شاخه **۰٫۳۴٪** است؛ این عدد به معنی انتشار یا تکمیل کل محصول نیست.
-- [PR #1 — Cloudflare D1 connectivity smoke test](https://github.com/pasoooir/Erp/pull/1): Token موجود در GitHub Actions با موفقیت احراز هویت شد و D1، Workers Scripts، Pages و KV با درخواست read-only پاسخ موفق دادند؛ فهرست Worker/Pages/KV خالی است. R2 با 403 مواجه شد. اجرای نهایی همچنان به‌درستی fail می‌شود چون متغیر repository-level `CLOUDFLARE_ACCOUNT_ID` خالی است.
-- Cloudflare: فقط D1 آزمایشی `erp-connectivity-test-20261028` وجود دارد؛ این دیتابیس عملیاتی ERP نیست و migration روی آن اجرا نشده است.
+- رابط کاربری GitHub Pages در `https://pasoooir.github.io/Erp/` است. کد پایه احراز هویت، نشست، ساختار سازمانی، مدیریت کاربر، نقش/scope و ممیزی در مخزن موجود است؛ این به معنی تکمیل کل ERP نیست.
+- در Cloudflare یک D1 اختصاصی با نام `erp-production-eu` و شناسه `d33370d3-5bb9-4439-be1e-39467b903482` در حوزه EU ایجاد شد. دیتابیس connectivity آزمایشی قبلی دست‌نخورده است.
+- سه migration پایه `0001_erp_foundation.sql`، `0002_scoped_rbac.sql` و `0003_auth_username.sql` با موفقیت روی D1 جدید اجرا و در `d1_migrations` ثبت شدند؛ فهرست جدول‌ها و سوابق migration با query فقط‌خواندنی بررسی شد.
+- Worker با نام `erp-api` در `https://erp-api.pasoooir-erp.workers.dev` بارگذاری شد؛ Cloudflare پاسخ موفق برای upload، secret binding و فعال‌سازی workers.dev برگرداند. binding پایگاه داده به D1 جدید و CORS محدود به Origin رابط GitHub Pages تنظیم شد.
+- رابط ماژول ERP در شاخه کاری به API مستقل متصل شده و از `credentials: include` استفاده می‌کند. Cookie نشست برای ارتباط cross-site با `HttpOnly; Secure; SameSite=None` تنظیم شده است.
+- Secret راه‌اندازی اولیه به‌صورت Cloudflare Worker Secret با نام `BOOTSTRAP_SECRET` تنظیم شده؛ مقدار آن در مخزن یا مستندات ذخیره نشده است. مدیر اولیه هنوز ساخته نشده و باید مالک سامانه آن را یک‌بار از فرم bootstrap ایجاد کند.
+- وضعیت تأیید: ایجاد D1، اجرای schema، ثبت migrationها و بارگذاری Worker تأییدشده‌اند. درخواست HTTP end-to-end به دامنه workers.dev از محیط اجرای فعلی قابل انجام نبود؛ health، bootstrap و login در مرورگر واقعی هنوز نیازمند smoke test هستند. تا آن زمان API را «مستقرشده، اما end-to-end تأییدنشده» محسوب کنید.
+- کل ERP، شامل ماژول‌های منابع انسانی، حقوق و دستمزد، موجودی، خرید، فروش، حسابداری، تولید، کیفیت، دارایی ثابت و گزارش‌های کامل، همچنان کار باقیمانده دارد؛ درصد کل پروژه از روی صرف استقرار این برش افزایش داده نشده است.
+
+## استقرار D1 و API — 2026-10-29
+
+| شناسه | معیار پذیرش | شواهد | وضعیت | اقدام بعدی |
+|---|---|---|---|---|
+| ERP-D1-PROD-001 | ساخت D1 اختصاصی EU بدون تغییر دیتابیس آزمایشی | Cloudflare D1 `erp-production-eu`, UUID `d33370d3-5bb9-4439-be1e-39467b903482` | completed | نگه‌داری از snapshot/backup طبق سیاست عملیاتی |
+| ERP-D1-MIG-001 | اجرای schema پایه و جلوگیری از اجرای تکراری migrationها | query موفق برای migrationهای 0001–0003؛ `d1_migrations` شامل سه نام migration؛ جدول‌های users, sessions, org_units, roles, user_roles, user_org_scopes, permissions, role_permissions, audit_events و login_attempts موجودند | completed | CI و migrationهای آتی را با همان D1 ID همگام نگه‌دار |
+| ERP-API-DEPLOY-001 | Worker با D1 binding، secret bootstrap و workers.dev فعال | Cloudflare API: upload HTTP 200؛ ثبت secret HTTP 201؛ فعال‌سازی subdomain HTTP 200؛ Worker ID `erp-api`, deployment `b024c836cc134195accf7d55623e792a` | in_progress | health/bootstrap/login را از مرورگر واقعی smoke-test کن |
+| ERP-PAGES-API-001 | رابط Pages از API مستقل استفاده کند و نشست cross-origin ارسال شود | `public/modules/erp-shell/erp-shell.js`: API base، `credentials: include`; Worker CORS محدود به Origin Pages و cookie Secure/HttpOnly/SameSite=None | in_progress | آزمون واقعی login/logout و کنترل Origin/CSRF |
+| ERP-BOOTSTRAP-001 | ساخت یک‌باره مدیر بدون رمز پیش‌فرض و بدون secret در کد | `BOOTSTRAP_SECRET` در Worker Secret؛ endpoint bootstrap موجود | blocked | مالک سامانه باید کلید راه‌اندازی را در فرم خصوصی وارد و مدیر اولیه را ایجاد کند؛ secret را در repo یا چت عمومی ذخیره نکن |
 
 ## ردیابی اجرا
 
