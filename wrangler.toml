@@ -1,29 +1,15 @@
 name = "erp-api"
-main = "src/index.js"
+main = "workers.js"
 compatibility_date = "2026-10-28"
 workers_dev = true
 
+# The frontend is hosted independently by GitHub Pages.
+# This Worker serves API routes only; it does not use Pages or Workers Assets.
 [vars]
 APP_ORIGIN = "https://pasoooir.github.io"
-
-[assets]
-directory = "./public"
-binding = "ASSETS"
-run_worker_first = ["/api/*"]
 
 [[d1_databases]]
 binding = "DB"
 database_name = "erp-production-eu"
 database_id = "d33370d3-5bb9-4439-be1e-39467b903482"
 migrations_dir = "migrations"
-
-# Isolated bindings and origins used by Cloudflare Preview builds.
-# Production [vars] and [[d1_databases]] above remain unchanged.
-[previews.vars]
-APP_ORIGIN = "https://pasoooir.github.io"
-WEBAUTHN_RP_ID = "pasoooir.github.io"
-WEBAUTHN_ORIGIN = "https://pasoooir.github.io"
-
-[[previews.d1_databases]]
-binding = "DB"
-database_id = "b108b011-6b3c-49cf-a7c2-7cae0b8b0416"
