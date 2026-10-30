@@ -154,3 +154,10 @@
 - آخرین commit مبنای main در این بازبینی: `ec62e092179faa6a92290d5be82d587939aac54e`.
 
 **قاعده:** سبز بودن CI، موفقیت Preview یا انتشار Pages به‌تنهایی اثبات ورود واقعی، تکمیل ماژول‌های ERP یا صحت گردش‌های داده‌ای کارخانه نیست.
+
+
+### تأیید مرورگر روی GitHub Pages منتشرشده — 2026-10-30
+
+- اجرای [ERP live API smoke run 41025370318](https://github.com/pasoooir/Erp/actions/runs/41025370318) موفق شد؛ تمام ۱۰ مرحله job زنده از جمله Health، اتصال D1، Bootstrap status، CORS و Preview سبز هستند.
+- job مستقل `published-pages-browser-smoke` در همان run با Chromium روی viewport موبایل 390×844 موفق شد: فرم ورود در مسیر عادی قابل مشاهده بود، فرم bootstrap پنهان بود، و در `?setup=1` با توجه به `bootstrap_required=true` فرم راه‌اندازی اولیه نمایش داده شد.
+- این تست فقط UI منتشرشده و رفتار مسیرها را تأیید می‌کند؛ مدیر اولیه هنوز ساخته نشده و ورود با credential واقعی مالک آزمایش نشده است.
