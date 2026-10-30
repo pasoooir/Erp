@@ -205,7 +205,7 @@ try {
   await page.locator("#hrContractForm button[type=submit]").click();
   await page.locator("#hrContractsTable tr").filter({hasText:"CON-UI-001"}).waitFor();
   await page.locator("#hrTimePanel").waitFor({state:"visible"});
-  await page.locator('#hrTimeEventForm select[name="employee_id"]').selectOption({label:/EMP-UI-001/});
+  await page.locator('#hrTimeEventForm select[name="employee_id"]').selectOption({label:"EMP-UI-001 — کارمند آزمایش منابع انسانی"});
   await page.locator('#hrTimeEventForm select[name="event_type"]').selectOption("clock_in");
   await page.locator('#hrTimeEventForm input[name="occurred_at"]').fill("2026-10-30T08:00");
   await page.locator("#hrTimeEventForm button[type=submit]").click();
