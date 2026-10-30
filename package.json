@@ -6,7 +6,11 @@
   "description": "Initial Cloudflare Workers and D1 vertical slice for ERP authentication and organization units",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/index.js && node --check src/modules/auth/login/login-handler.js && node --check public/modules/erp-shell/erp-shell.js && node --check public/modules/auth/login/login-form.js"
+    "check": "node --check src/index.js && node --check src/modules/auth/login/login-handler.js && node --check src/modules/auth/passkey/passkey-handler.js && node --check public/modules/erp-shell/erp-shell.js && node --check public/modules/auth/login/login-form.js"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "13.2.2",
+    "@simplewebauthn/browser": "13.2.2"
   },
   "engines": {
     "node": ">=22"
