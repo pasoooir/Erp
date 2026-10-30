@@ -120,3 +120,18 @@
 - workflow انتشار artifact از `public/` جداگانه موفق شده است؛ runهای انتشار فوق شاهد موفقیت سمت GitHub هستند، نه اثبات کارکرد ورود به D1.
 
 - **پاک‌سازی PRهای تکراری:** PRهای #3، #4 و #6 پس از ادغام مجموع تغییراتشان در PR #7 با توضیح روشن بسته شدند؛ PRهای نامرتبط #1 و #2 جداگانه باز مانده‌اند.
+
+
+## ERP-AUTH-PASSKEY-001 — بازطراحی احراز هویت برای Cloudflare Workers Free
+
+| معیار پذیرش | شواهد موجود در شاخه | وضعیت | اقدام بعدی |
+|---|---|---|---|
+| افزودن مدل داده Passkey و challenge یک‌بارمصرف | `migrations/0004_passkey_auth.sql`؛ credential public key، counter، transport و challenge با انقضا | 🟡 پیاده‌سازی‌شده؛ منتظر CI | تست migration و challenge replay/expiry |
+| API ثبت Passkey مدیر اولیه | `src/modules/auth/passkey/passkey-handler.js`؛ options و verify، کلید bootstrap، ثبت اتمیک مدیر/نقش/credential | 🟡 پیاده‌سازی‌شده؛ منتظر CI | تست end-to-end و CPU |
+| ورود Passkey و ثبت Passkey برای کاربر واردشده | endpointهای options/verify؛ بررسی origin/RP ID، user verification و signature/counter | 🟡 پیاده‌سازی‌شده؛ منتظر CI | تست مرورگر واقعی و سناریوهای منفی |
+| رابط ثبت مدیر و ورود با Passkey | `public/bootstrap-admin.html`, `public/modules/auth/login/login-form.html`, `public/modules/erp-shell/erp-shell.js` | 🟡 پیاده‌سازی‌شده؛ منتظر CI | اجرای Chromium virtual authenticator |
+| محدودیت CPU پلن رایگان | `wrangler.toml`: `limits.cpu_ms = 10`؛ WebAuthn با الگوریتم‌های ES256/RS256 | 🟡 نیازمند اندازه‌گیری runtime | تأیید واقعی زیر ۱۰ms در Worker |
+| انتقال همه کاربران و حذف PBKDF2 | مسیر قدیمی رمز عبور و ساخت کاربر با رمز هنوز باقی است؛ جریان دعوت/فعال‌سازی passwordless کامل نشده | 🔴 ناقص/مسدود | پیاده‌سازی دعوت یک‌بارمصرف، بازیابی امن و مهاجرت همه کاربران؛ سپس حذف مسیر رمز |
+| Production | هیچ migration یا deploy عملیاتی اجرا نشده | ⬜ انجام‌نشده | فقط پس از تأیید صریح و قبولی تمام تست‌ها |
+
+**محدوده ادعا:** این شاخه زیرساخت Passkey و جریان مدیر اولیه/ورود را اضافه می‌کند؛ هنوز بازطراحی کامل چرخه عمر کاربران نیست. سبز شدن CI به‌تنهایی اثبات ماندن CPU در ۱۰ms یا آماده‌بودن Production نیست. جزئیات: `docs/PASSKEY_AUTH_DESIGN.md`.
