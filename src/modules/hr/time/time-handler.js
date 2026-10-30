@@ -53,10 +53,24 @@ async function createTimeEvent(request,env,user,helpers) {
   if(eventType==="clock_in"&&last?.event_type==="clock_in")return fail(409,"already_clocked_in","برای این کارمند هنوز خروج ثبت نشده است.");
   if(eventType==="clock_out"&&(!last||last.event_type!=="clock_in"))return fail(409,"not_clocked_in","برای ثبت خروج، ورود باز لازم است.");
   const id=crypto.randomUUID();
-  try{await env.DB.batch([
-    env.DB.prepare("INSERT INTO employee_time_events (id,employee_id,event_type,occurred_at,idempotency_key,created_by) VALUES (?,?,?,?,?,?)").bind(id,employeeId,eventType,occurredAt,key,user.id),
-    env.DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json) VALUES (?,?,?,?,?,?)").bind(crypto.randomUUID(),user.id,"employee_time_event.created","employee_time_event",id,JSON.stringify({employee_id:employeeId,event_type:eventType,occurred_at:occurredAt}))
-  ]);}catch(error){if(/UNIQUE constraint failed/i.test(String(error)))return fail(409,"duplicate_event","رویداد تکراری است.");throw error;}
+  try{
+    const batch=await env.DB.batch([
+      env.DB.prepare(`INSERT INTO employee_time_state (employee_id,last_event_id,last_event_type,last_occurred_at,open_session)
+        VALUES (?,?,?,?,?) ON CONFLICT(employee_id) DO UPDATE SET last_event_id=excluded.last_event_id,
+        last_event_type=excluded.last_event_type,last_occurred_at=excluded.last_occurred_at,
+        open_session=excluded.open_session,updated_at=CURRENT_TIMESTAMP
+        WHERE employee_time_state.open_session=? AND employee_time_state.last_occurred_at<excluded.last_occurred_at`)
+        .bind(employeeId,id,eventType,occurredAt,eventType==="clock_in"?1:0,eventType==="clock_in"?0:1),
+      env.DB.prepare(`INSERT INTO employee_time_events (id,employee_id,event_type,occurred_at,idempotency_key,created_by)
+        SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM employee_time_state WHERE employee_id=? AND last_event_id=?)`)
+        .bind(id,employeeId,eventType,occurredAt,key,user.id,employeeId,id),
+      env.DB.prepare(`INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json)
+        SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM employee_time_state WHERE employee_id=? AND last_event_id=?)`)
+        .bind(crypto.randomUUID(),user.id,"employee_time_event.created","employee_time_event",id,
+          JSON.stringify({employee_id:employeeId,event_type:eventType,occurred_at:occurredAt}),employeeId,id)
+    ]);
+    if(Number(batch[0]?.meta?.changes??0)!==1)return fail(409,"event_state_conflict","وضعیت تردد کارمند هم‌زمان تغییر کرده است؛ فهرست را تازه‌سازی کنید.");
+  }catch(error){if(/UNIQUE constraint failed/i.test(String(error)))return fail(409,"duplicate_event","رویداد تکراری است.");throw error;}
   return json({data:await env.DB.prepare(timeSelect+" WHERE t.id=?").bind(id).first()},201);
 }
 async function createLeave(request,env,user,helpers) {
