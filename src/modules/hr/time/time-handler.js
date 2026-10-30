@@ -1,6 +1,6 @@
-const isoDate = value => typeof value === "string" && /^\\d{4}-\\d{2}-\\d{2}$/.test(value) &&
+const isoDate = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
   Number.isFinite(Date.parse(value + "T00:00:00Z")) && new Date(value + "T00:00:00Z").toISOString().slice(0,10) === value;
-const isoInstant = value => typeof value === "string" && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+const isoInstant = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
 const text = value => String(value ?? "").trim();
 const timeSelect = `SELECT t.id,t.employee_id,e.employee_no,e.display_name,e.org_unit_id,t.event_type,t.occurred_at,t.idempotency_key,t.created_at
   FROM employee_time_events t JOIN employees e ON e.id=t.employee_id`;
@@ -99,7 +99,7 @@ export async function handleHrTimeRequest(request,env,user,helpers) {
   if(path==="/api/v1/hr/time-events"&&method==="POST")return createTimeEvent(request,env,user,helpers);
   if(path==="/api/v1/hr/leave-requests"&&method==="GET")return listRecords(url,env,user,helpers,"leave");
   if(path==="/api/v1/hr/leave-requests"&&method==="POST")return createLeave(request,env,user,helpers);
-  const match=path.match(/^\\/api\\/v1\\/hr\\/leave-requests\\/([^/]+)$/);
+  const match=path.match(/^\/api\/v1\/hr\/leave-requests\/([^/]+)$/);
   if(match&&method==="PATCH")return decideLeave(request,match[1],env,user,helpers);
   return helpers.fail(404,"not_found","مسیر حضور و غیاب پیدا نشد.");
 }
