@@ -44,3 +44,13 @@ WHERE r.name='admin' AND p.resource IN ('time_entry','leave');
 INSERT OR IGNORE INTO role_permissions (role_id,permission_id)
 SELECT r.id,p.id FROM roles r JOIN permissions p ON p.resource IN ('time_entry','leave')
 WHERE r.name='org_manager';
+
+-- Serialized per-employee transition state makes distinct-key concurrent events race-safe.
+CREATE TABLE IF NOT EXISTS employee_time_state (
+  employee_id TEXT PRIMARY KEY REFERENCES employees(id) ON DELETE RESTRICT,
+  last_event_id TEXT NOT NULL,
+  last_event_type TEXT NOT NULL CHECK (last_event_type IN ('clock_in','clock_out')),
+  last_occurred_at TEXT NOT NULL,
+  open_session INTEGER NOT NULL CHECK (open_session IN (0,1)),
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
