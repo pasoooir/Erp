@@ -131,3 +131,70 @@
 | ERP-HOSTING-ARCH-003 | پیکربندی Pages Assets/Preview از Worker جدا شود | `assets` و `previews` از `wrangler.toml` حذف شده‌اند؛ D1 binding و APP_ORIGIN باقی مانده‌اند | in_progress | بازبینی diff و اجرای CI؛ هیچ Worker production deploy یا D1 migration انجام نشده است |
 
 **مرز استقرار:** GitHub Pages برای رابط کاربری؛ Cloudflare Workers برای API؛ Cloudflare D1 فقط پشت Worker. Cloudflare Pages در مسیر انتشار این پروژه استفاده نمی‌شود.
+
+
+## بازبینی شواهد استقرار و احراز هویت — 2026-10-30
+
+این بخش مرجع وضعیت جدیدتر است و موارد متناقض/قدیمی‌تر در بخش‌های قبل را برای وضعیت جاری اصلاح می‌کند.
+
+| شناسه | معیار پذیرش | شواهد تازه | وضعیت | اقدام بعدی |
+|---|---|---|---|---|
+| ERP-AUTH-UI-002 | نمایش فرم ورود در مسیر عادی و محدودکردن bootstrap به `?setup=1` هنگام نیاز | PR #16 در main ادغام شد؛ GitHub Pages deploy run `41024132999` موفق؛ live API smoke run `41024735521` موفق؛ تست مرورگر Worker در run `41024382213` هر دو حالت فرم را بررسی کرد | completed برای کد و smoke؛ ورود واقعی حساب مالک هنوز تأیید نشده | مالک سامانه مدیر اولیه را با secret خصوصی خودش یک‌بار ایجاد کند؛ رمز/secret در چت یا repo ثبت نشود |
+| ERP-RUNTIME-SMOKE-002 | اجرای مسیر استاتیک Pages و API proxy در تست runtime محلی بدون 404 یا پاسخ JSON خراب | PR #17 ادغام شد؛ run `41024382213` در همه مراحل از جمله Chromium و Worker runtime موفق | completed | قرارداد smoke در CI حفظ شود |
+| ERP-CF-PREVIEW-001 | Cloudflare Workers Builds preview بدون اتصال به D1 تولیدی | PR #18 شاخه `fix/cloudflare-preview-safe-d1-config`؛ commit `5dfd09c890f228eee6274cfcf6ce348acf8c32c1`; Cloudflare preview deployment `825a79da-c32f-4f69-ab24-ea6629877b95` با Build و Deployment موفق؛ D1 مجزا `erp-preview-passkey-e2e` شناسه `b108b011-6b3c-49cf-a7c2-7cae0b8b0416` و در زمان بررسی صفر جدول دارد | completed برای ایجاد preview و جداسازی binding؛ PR #18 هنوز باز است | اجرای smoke مستقل preview و سپس بازبینی PR؛ هیچ migration روی D1 preview یا production اجرا نشود |
+| ERP-CI-LIVE-API-002 | بررسی API عملیاتی، health، وضعیت bootstrap و CORS بدون تغییر داده | live API smoke run `41024735521` همه ۸ مرحله موفق؛ foundation run `41024735546` همه مراحل موفق | completed برای معیارهای smoke | ورود واقعی و CRUD فقط پس از ایجاد مدیر و تست مجاز مالک بررسی شود |
+
+### مرزهای تأیید و انتشار
+
+- PR #16 و PR #17 در main ادغام شده‌اند؛ PR #18 با وضعیت open است و ادغام نشده.
+- Pages deployment run `41024580427` و ERP foundation run روی main با شناسه `41024581296` موفق‌اند.
+- Cloudflare preview برای PR #18 با شناسه deployment بالا موفق است. یک build دستی تکراری که به‌دلیل trigger branch filter به trigger اصلی متصل نبود، لغو شد؛ این مورد deployment موفق PR را نقض نمی‌کند.
+- D1 preview در زمان بررسی خالی بود (`num_tables=0`)؛ هیچ migration روی آن اجرا نشده است. D1 تولیدی، secrets و deployment عملیاتی در این مرحله تغییر نکرده‌اند.
+- وضعیت ورود با حساب واقعی مالک: تأییدنشده؛ smoke testهای عمومی عمداً هیچ credential یا bootstrap secret واقعی را استفاده نمی‌کنند.
+- آخرین commit مبنای main در این بازبینی: `ec62e092179faa6a92290d5be82d587939aac54e`.
+
+**قاعده:** سبز بودن CI، موفقیت Preview یا انتشار Pages به‌تنهایی اثبات ورود واقعی، تکمیل ماژول‌های ERP یا صحت گردش‌های داده‌ای کارخانه نیست.
+
+
+### تأیید مرورگر روی GitHub Pages منتشرشده — 2026-10-30
+
+- اجرای [ERP live API smoke run 41025370318](https://github.com/pasoooir/Erp/actions/runs/41025370318) موفق شد؛ تمام ۱۰ مرحله job زنده از جمله Health، اتصال D1، Bootstrap status، CORS و Preview سبز هستند.
+- job مستقل `published-pages-browser-smoke` در همان run با Chromium روی viewport موبایل 390×844 موفق شد: فرم ورود در مسیر عادی قابل مشاهده بود، فرم bootstrap پنهان بود، و در `?setup=1` با توجه به `bootstrap_required=true` فرم راه‌اندازی اولیه نمایش داده شد.
+- این تست فقط UI منتشرشده و رفتار مسیرها را تأیید می‌کند؛ مدیر اولیه هنوز ساخته نشده و ورود با credential واقعی مالک آزمایش نشده است.
+
+
+## منابع انسانی — وضعیت اجرایی (2026-10-30)
+
+| شناسه | محدوده و معیار پذیرش | شواهد قابل بازبینی | وضعیت | اقدام بعدی |
+|---|---|---|---|---|
+| HR-PEO-A / HR-PEO-B | پرونده پایه کارکنان و قراردادهای استخدامی با scope سازمانی، اعتبارسنجی، audit و رابط RTL | PR #20؛ foundation run [41027500974](https://github.com/pasoooir/Erp/actions/runs/41027500974) سبز؛ live API smoke [41027501052](https://github.com/pasoooir/Erp/actions/runs/41027501052) سبز؛ Cloudflare Preview build/deployment commit `2f2933b` موفق با D1 مجزای Preview | 🟡 پیاده‌سازی و آزمون شاخه‌ای موفق؛ PR هنوز ادغام نشده | پس از ادغام کنترل‌شده، migration و runtime روی main دوباره تأیید شوند |
+| HR-TIME-A | رویدادهای خام ورود/خروج با idempotency، ترتیب زمانی و transition اتمی | PR #21؛ migration `0005_hr_time.sql`؛ جدول state برای جلوگیری از دو ورود هم‌زمان؛ تست رقابت دو درخواست ورود؛ foundation CI [41028780786](https://github.com/pasoooir/Erp/actions/runs/41028780786) سبز | 🟡 پیاده‌سازی و آزمون کامل در شاخه؛ ادغام باقی است | پس از ادغام PR #20 و سپس PR #21، CI روی main اجرا شود |
+| HR-TIME-B | درخواست/تصمیم مرخصی با جلوگیری از هم‌پوشانی در سطح D1، کنترل scope و audit | PR #21؛ D1 triggers برای جلوگیری از overlap حتی در رقابت هم‌زمان؛ تصمیم فقط برای pending و audit شرطی؛ تست‌های concurrency در foundation CI [41028780786](https://github.com/pasoooir/Erp/actions/runs/41028780786) سبز | 🟡 پیاده‌سازی و آزمون کامل در شاخه؛ ادغام باقی است | پس از ادغام، migration و آزمون یکپارچه روی main |
+| HR-TIME-C | رابط RTL برای ثبت/مشاهده ورود و خروج، درخواست و تأیید/رد مرخصی؛ بدون overflow موبایل | PR #21؛ فایل‌های `public/modules/hr/personnel/personnel.html/js/css`؛ Chromium/Worker runtime در foundation CI [41028780786](https://github.com/pasoooir/Erp/actions/runs/41028780786) سبز؛ live API smoke [41028780798](https://github.com/pasoooir/Erp/actions/runs/41028780798) سبز | 🟡 پیاده‌سازی و آزمون کامل در شاخه؛ ادغام باقی است | پس از ادغام، Pages deployment و browser smoke را دوباره تأیید کن |
+| HR-TAL | جذب، آموزش و ارزیابی | هنوز API/schema/UI مستقل ندارد | ⬜ شروع‌نشده | برش مستقل پس از تثبیت HR-TIME |
+| HR-PAY | حقوق و دستمزد | عمداً شروع نشده؛ نیازمند قواعد مصوب دوره، مالیات، مزایا، گردکردن، محرمانگی و کنترل دسترسی ویژه | ⬜ شروع‌نشده | ابتدا تصمیم‌های رسمی مالی/قانونی؛ هیچ محاسبه‌ای با فرضیات ساخته نشود |
+
+### مرز پذیرش HR
+
+- PR #20 و PR #21 هر دو باز و ادغام‌نشده‌اند؛ HR در `main` تکمیل‌شده محسوب نمی‌شود.
+- PR #21 به PR #20 وابسته است و base آن `feature/hr-personnel-contracts` است؛ پس از ادغام PR #20 باید base به `main` تغییر کند.
+- حضور و غیاب فعلاً فقط رویداد خام را ثبت می‌کند؛ شیفت، تعطیلات، اضافه‌کاری، کسری کار، گردکردن و اتصال Payroll بدون سیاست مصوب پیاده‌سازی نمی‌شوند.
+- درخواست مرخصی هم‌پوشان در سطح D1 رد می‌شود؛ audit فقط برای تصمیمی ثبت می‌شود که transition pending را برنده شده باشد.
+- migrationهای 0004 و 0005 فقط در D1 محلی CI اجرا شده‌اند؛ هیچ migration راه‌دور، Production deploy، تغییر Secret یا عملیات داده واقعی انجام نشده است.
+- Cloudflare Preview برای PRهای #19 و #20 با binding اختصاصی Preview build/deploy موفق داشته؛ PR #21 نیز برای commit `72fb5cc` با D1 Preview جداگانه build و deploy موفق داشته است.
+- مدیر اولیه واقعی هنوز توسط مالک ساخته نشده و ورود با credential واقعی مالک تأیید نشده است.
+
+**قاعده وضعیت:** سبز بودن API smoke یا Preview به معنی ادغام، استقرار Production یا تکمیل HR نیست. هر زیرشناسه پس از پذیرش branch-level فقط زمانی در main سبز می‌شود که merge کنترل‌شده و آزمون پس از ادغام نیز موفق باشد.
+
+
+## احراز هویت بدون رمز — بازبینی یکپارچه‌سازی Passkey (2026-10-30)
+
+| شناسه | معیار پذیرش | شواهد/وضعیت فعلی | وضعیت | اقدام لازم |
+|---|---|---|---|---|
+| ERP-AUTH-PASSKEY-001 | ثبت مدیر اولیه و ورود با WebAuthn Passkey، challenge یک‌بارمصرف، بررسی origin/RP ID و counter | PR #12؛ foundation CI [41021661760](https://github.com/pasoooir/Erp/actions/runs/41021661760) و live API smoke [41021661787](https://github.com/pasoooir/Erp/actions/runs/41021661787) موفق؛ Cloudflare Preview برای commit `bec74b1` با build/deploy موفق | 🟡 کد و CI شاخه‌ای تأیید شده؛ یکپارچه‌سازی با main مسدود | GitHub برای PR #12 مقدار mergeable=false گزارش می‌کند و شاخه ۱۶ commit از main فعلی عقب است؛ باید روی نسخه فعلی rebase/بازسازی شود |
+| ERP-AUTH-PASSKEY-MIG-001 | ترتیب migrationها بدون شماره تکراری | PR #12 از `0004_passkey_auth.sql` استفاده می‌کند، درحالی‌که HR در PR #20 از `0004_hr_personnel.sql` و PR #21 از `0005_hr_time.sql` استفاده می‌کند | 🔴 تعارض یکپارچه‌سازی | migration Passkey پس از HR به `0006_passkey_auth.sql` منتقل و تمام تست/مستندات به‌روز شوند |
+| ERP-AUTH-PASSKEY-CPU-001 | اثبات سازگاری عملیات WebAuthn با سقف CPU پیش‌فرض Workers Free | Preview build/deploy موفق است، اما اندازه‌گیری مستقل CPU برای registration/login هنوز در شواهد CI وجود ندارد | 🟡 نیازمند اندازه‌گیری | ثبت CPU واقعی برای مسیرهای options/verify و آزمون با پلن Free |
+| ERP-AUTH-PASSKEY-LIFECYCLE-001 | انتقال همه کاربران به passwordless و حذف PBKDF2 | خود PR #12 تصریح می‌کند legacy password login/provisioning هنوز باقی است؛ دعوت/بازیابی امن و مهاجرت تمام کاربران کامل نیست | 🔴 ناقص | طراحی invitation/recovery و migration کاربران؛ سپس حذف endpoint رمز و PBKDF2 |
+| ERP-AUTH-PASSKEY-SEC-001 | فرم bootstrap بدون داده هویتی پیش‌فرض و بدون داده شخصی hardcoded | مقادیر هویتی پیش‌فرض از `public/bootstrap-admin.html` در commit `361d9c5` حذف شده‌اند؛ CI کامل این اصلاح هنوز باید دوباره اجرا شود | 🔴 نیازمند اصلاح پیش از ادغام | تأیید CI پس از حذف مقدارهای پیش‌فرض؛ سپس rebase و اجرای کامل تست‌ها |
+
+**مرز ادعا:** PR #12 یک زیرساخت Passkey معتبر در شاخه خودش دارد، اما هنوز باز و یکپارچه‌نشده است؛ CI سبز آن، سازگاری با HR migrationهای جدید، تکمیل چرخه عمر همه کاربران یا اندازه‌گیری CPU پلن Free را اثبات نمی‌کند. هیچ migration راه‌دور یا Production deploy انجام نشده است.

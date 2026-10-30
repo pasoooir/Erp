@@ -128,3 +128,24 @@
 - **عدم استفاده از Cloudflare Pages:** فایل‌های Wrangler دیگر `assets` یا تنظیمات `previews` مخصوص Pages ندارند. برای انتشار رابط کاربری فقط GitHub Pages را استفاده کن.
 
 برای انتشار Frontend، GitHub Actions باید از شاخه `main` پوشه `public/` را منتشر کند. برای Backend، انتشار Worker یک عملیات مستقل است و نباید در workflow مربوط به GitHub Pages ادغام شود. هرگونه انتشار production یا migration دیتابیس زنده همچنان نیازمند تأیید صریح مالک سامانه است.
+
+
+## وضعیت جاری ماژول منابع انسانی — 2026-10-30
+
+- **پرونده کارکنان و قراردادها:** پیاده‌سازی در [PR #20](https://github.com/pasoooir/Erp/pull/20)؛ APIهای scope-aware، migration `0004_hr_personnel.sql`، UI فارسی RTL و آزمون‌های Worker/Chromium. CI foundation و live API smoke برای commit جاری این PR موفق‌اند؛ PR هنوز ادغام نشده است.
+- **حضور و غیاب و مرخصی:** پیاده‌سازی در [PR #21](https://github.com/pasoooir/Erp/pull/21)، stacked روی PR #20؛ migration `0005_hr_time.sql`، رویدادهای خام ورود/خروج با idempotency و state transition اتمی، درخواست مرخصی با جلوگیری از overlap در سطح D1، audit و رابط RTL.
+- **اعتبارسنجی HR-TIME:** آزمون‌های Node/SQLite و migration در foundation CI روی آخرین commit اجرا شده‌اند؛ اجرای Chromium/Worker runtime برای آخرین commit هنوز در حال تکمیل است. تا سبز شدن همه مراحل، این برش تکمیل‌شده اعلام نمی‌شود.
+- **مرزهای سیاستی:** محاسبه شیفت، تعطیلات، گردکردن، اضافه‌کاری، کسری کار، مانده مرخصی و Payroll پیاده‌سازی نشده‌اند؛ به سیاست مصوب سازمان نیاز دارند.
+- **کارهای بعدی:** جذب/آموزش/ارزیابی (HR-TAL) و حقوق و دستمزد (HR-PAY) هنوز شروع نشده‌اند. HR-PAY تا تعیین قواعد مالی/قانونی و دسترسی محرمانه نباید با فرضیات ساخته شود.
+
+جزئیات شواهد، وضعیت‌ها و وابستگی PRها در [دفتر اجرای پروژه](./docs/PROJECT_EXECUTION_TRACKER.md) ثبت می‌شود. PRهای #20 و #21 باز هستند؛ هیچ‌کدام به `main` ادغام نشده‌اند. هیچ remote D1 migration یا Production deployment انجام نشده است.
+
+
+## احراز هویت Passkey و محدودیت‌های ادغام
+
+- پیاده‌سازی WebAuthn در [PR #12](https://github.com/pasoooir/Erp/pull/12) روی شاخه مستقل وجود دارد؛ foundation CI و live API smoke آن در runهای 41021661760 و 41021661787 موفق بوده و Cloudflare Preview نیز deploy شده است.
+- PR #12 هنوز با main فعلی یکپارچه نشده و ۱۶ commit از main عقب است. همچنین migration آن `0004_passkey_auth.sql` با migration HR در PR #20 شماره یکسان دارد؛ پیش از ادغام باید بازسازی و به شماره بعد از HR یعنی `0006_passkey_auth.sql` منتقل شود.
+- اندازه‌گیری مستقل CPU مسیرهای WebAuthn برای پلن Free هنوز ثبت نشده است. ورود رمز عبور و provisioning قدیمی نیز در PR #12 باقی مانده‌اند؛ دعوت/بازیابی passwordless و حذف PBKDF2 هنوز تکمیل نشده است.
+- مقدارهای هویتی پیش‌فرض از فایل bootstrap در commit `361d9c5` حذف شده‌اند؛ اجرای CI کامل پس از این اصلاح و rebase هنوز لازم است.
+
+وضعیت Passkey در tracker به‌صورت 🟡/🔴 ثبت شده؛ سبز بودن CI شاخه PR #12 به معنی تکمیل مهاجرت احراز هویت یا آمادگی Production نیست.
