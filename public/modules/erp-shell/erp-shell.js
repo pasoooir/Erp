@@ -182,6 +182,16 @@
     },
     clientExtensionResults:credential.getClientExtensionResults()
   });
+  const serializeRegistrationPasskey = credential => ({
+    id:credential.id,rawId:bufferToBase64Url(credential.rawId),type:credential.type,
+    authenticatorAttachment:credential.authenticatorAttachment,
+    response:{
+      clientDataJSON:bufferToBase64Url(credential.response.clientDataJSON),
+      attestationObject:bufferToBase64Url(credential.response.attestationObject),
+      transports:credential.response.getTransports?credential.response.getTransports():[]
+    },
+    clientExtensionResults:credential.getClientExtensionResults()
+  });
   forms.bootstrap.addEventListener("submit",async event=>{
     event.preventDefault();const submit=forms.bootstrap.querySelector("button");submit.disabled=true;
     const data=formData(forms.bootstrap),secret=data.bootstrap_secret;delete data.bootstrap_secret;
@@ -192,7 +202,7 @@
       if(options.excludeCredentials)options.excludeCredentials=options.excludeCredentials.map(item=>({...item,id:base64UrlToBuffer(item.id)}));
       const credential=await navigator.credentials.create({publicKey:options});
       if(!credential)throw new Error("ثبت Passkey لغو شد.");
-      await api("/api/v1/auth/passkey/bootstrap/verify",{method:"POST",headers:{"x-bootstrap-secret":secret},body:JSON.stringify({challenge,response:serializePasskey(credential)})});
+      await api("/api/v1/auth/passkey/bootstrap/verify",{method:"POST",headers:{"x-bootstrap-secret":secret},body:JSON.stringify({challenge,response:serializeRegistrationPasskey(credential)})});
       forms.bootstrap.reset();notice("Passkey مدیر اولیه ثبت شد.","success");await refreshAuth();
     }catch(e){notice(e.message,"error");}finally{submit.disabled=false;}
   });
