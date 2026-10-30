@@ -52,7 +52,12 @@ try {
   await page.locator('#bootstrapForm input[name="username"]').fill("admin");
   await page.locator('#bootstrapForm input[name="email"]').fill("admin@example.com");
   await page.locator("#bootstrapForm button[type=submit]").click();
-  await page.locator("#appPanel").waitFor({state:"visible"});
+  await page.waitForFunction(() => {
+    const app=document.querySelector("#appPanel"),notice=document.querySelector("#notice");
+    return (app&&!app.classList.contains("hidden")) || (notice&&notice.classList.contains("error"));
+  },null,{timeout:30000});
+  if(await page.locator("#appPanel").isHidden()) throw new Error("Passkey bootstrap failed: "+await page.locator("#notice").innerText());
+
   assert.equal(await page.locator("html").getAttribute("dir"),"rtl");
   assert.equal(await page.locator("html").getAttribute("lang"),"fa");
   await page.locator("#logoutButton").click();
