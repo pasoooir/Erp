@@ -209,7 +209,8 @@ try {
   await page.locator('#hrTimeEventForm select[name="event_type"]').selectOption("clock_in");
   await page.locator('#hrTimeEventForm input[name="occurred_at"]').fill("2026-10-30T08:00");
   await page.locator("#hrTimeEventForm button[type=submit]").click();
-  await page.locator("#hrTimeEventsTable tr").filter({hasText:"EMP-UI-001"}).waitFor();
+  try { await page.locator("#hrTimeEventsTable tr").filter({hasText:"EMP-UI-001"}).waitFor({timeout:10000}); }
+  catch { throw new Error("Attendance event did not appear in UI: "+await page.locator("#notice").textContent()); }
   await page.locator('#hrTimeEventForm select[name="event_type"]').selectOption("clock_out");
   await page.locator('#hrTimeEventForm input[name="occurred_at"]').fill("2026-10-30T16:00");
   await page.locator("#hrTimeEventForm button[type=submit]").click();
