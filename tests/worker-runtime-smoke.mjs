@@ -142,12 +142,10 @@ try {
   ));
   assert.equal(secondBootstrap.response.status,409);
 
-  const wrong=await api("/api/v1/auth/login",post({username:"admin",password:"wrong-password-123"}));
-  assert.equal(wrong.response.status,401);
-  const login=await api("/api/v1/auth/login",post({username:"admin",password}));
-  assert.equal(login.response.status,200);
-  const cookie=login.response.headers.get("set-cookie")?.split(";")[0];
-  assert.ok(cookie&&cookie.startsWith("erp_session="));
+  const browserCookies=await page.context().cookies(base);
+  const sessionCookie=browserCookies.find(item=>item.name==="erp_session");
+  const cookie=sessionCookie?sessionCookie.name+"="+sessionCookie.value:"";
+  assert.ok(cookie&&cookie.startsWith("erp_session="),"Passkey login should issue a session cookie");
   const me=await api("/api/v1/auth/me",{headers:{cookie}});
   assert.deepEqual(me.body.data.roles,["admin"]);
   const listed=await api("/api/v1/org-units",{headers:{cookie}});
