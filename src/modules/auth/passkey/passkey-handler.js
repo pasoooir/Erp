@@ -22,6 +22,7 @@ const parseBody = async (request, readJson, fail) => {
   catch (error) { return fail(400, "invalid_json", "درخواست معتبر نیست."); }
 };
 async function storeChallenge(DB, challenge, purpose, userId, metadata = {}) {
+  await DB.prepare("DELETE FROM auth_challenges WHERE expires_at<=CURRENT_TIMESTAMP").run();
   await DB.prepare(`INSERT INTO auth_challenges (challenge, purpose, user_id, metadata_json, expires_at)
     VALUES (?, ?, ?, ?, datetime('now', ?))`)
     .bind(challenge, purpose, userId || null, JSON.stringify(metadata), `+${CHALLENGE_TTL_MINUTES} minutes`).run();
@@ -221,8 +222,9 @@ export async function passkeyAuthenticationVerify(request, env, deps) {
     return fail(401, "invalid_passkey", "اعتبارسنجی Passkey ناموفق بود.");
   }
   if (!verification.verified) return fail(401, "invalid_passkey", "اعتبارسنجی Passkey ناموفق بود.");
-  await env.DB.prepare("UPDATE webauthn_credentials SET counter=? WHERE credential_id=?")
-    .bind(verification.authenticationInfo.newCounter, credential.credential_id).run();
+  const counterUpdate = await env.DB.prepare("UPDATE webauthn_credentials SET counter=?, last_used_at=CURRENT_TIMESTAMP WHERE credential_id=? AND counter=?")
+    .bind(verification.authenticationInfo.newCounter, credential.credential_id, credential.counter).run();
+  if (Number(counterUpdate.meta?.changes || 0) !== 1) return fail(401, "passkey_replayed", "اعتبارنامه قبلاً استفاده شده یا هم‌زمان تغییر کرده است.");
   const roles = await env.DB.prepare("SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id=r.id WHERE ur.user_id=?").bind(credential.id).all();
   const token = await createSession(credential.id, env);
   await audit(env, credential.id, "auth.login", "user", credential.id, { method: "passkey" });
