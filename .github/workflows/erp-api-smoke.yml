@@ -189,7 +189,7 @@ jobs:
             await page.locator("#loginForm").waitFor({ state: "visible" });
             await page.locator("#bootstrapForm").waitFor({ state: "hidden" });
             await page.locator('input[name="identifier"]').waitFor({ state: "visible" });
-            await page.locator('input[name="password"]').waitFor({ state: "visible" });
+            await page.locator('#loginForm input[name="password"]').waitFor({ state: "visible" });
             await page.goto(pagesBase + "?setup=1", { waitUntil: "networkidle", timeout: 30000 });
             if (bootstrapRequired) {
               await page.locator("#bootstrapForm").waitFor({ state: "visible" });
