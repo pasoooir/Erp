@@ -1,6 +1,6 @@
 # دفتر اجرای پروژه ERP — وضعیت مبتنی بر شواهد
 
-آخرین بازبینی: 2026-10-29 (استقرار API و D1 اختصاصی)  
+آخرین بازبینی: 2026-10-30 (رفع خطای Playwright، CI سبز و Cloudflare Preview موفق)  
 مخزن: [pasoooir/Erp](https://github.com/pasoooir/Erp)  
 شاخه مرجع: `main`  
 آخرین commit پایه بررسی‌شده در main: `a2163f5fc61f67f520ee7b556e7ce458d3dbd933`
@@ -148,6 +148,8 @@
 - بررسی اضافه: آزمون صریح نشست منقضی‌شده به `tests/worker.test.mjs` افزوده شد؛ پس از تغییر expires_at به گذشته، هم `/api/v1/auth/me` و هم API داده باید 401 بدهند. این تغییر در commit `69905dd3e658d97ce27b19f74bdf90aa52b3e374` است و منتظر CI مجدد است.
 - رفع خطای مستقل Cloudflare Preview: لاگ build مربوط به commit `cab696f` نشان داد `wrangler preview` به‌علت نبودن بخش `previews` و D1 Preview متوقف شده است؛ این خطا علت شکست Playwright نبود. یک D1 مجزای Preview با نام `erp-preview-passkey-e2e` و UUID `b108b011-6b3c-49cf-a7c2-7cae0b8b0416` در EU ایجاد و در `wrangler.toml` فقط به `previews.d1_databases` متصل شد. D1 اصلی و connectivity-test تغییر داده نشدند. commit پیکربندی: `ab3c2be42f78052047b16e16c06035d31d5082b4`.
 - نتیجه Cloudflare Preview پس از جداسازی D1: build `91ea30a0-31e6-4884-af54-070fa09e86f5` از مرحله asset upload عبور کرد، اما در مرحله deploy با خطای `CPU limits are not supported for the Free plan (100328)` متوقف شد. علت دوم مستقل از خطای Playwright است؛ تنظیم صریح `limits.cpu_ms = 10` حذف شد تا Free از سقف پیش‌فرض ۱۰ms استفاده کند. مستند `PASSKEY_AUTH_DESIGN.md` نیز اصلاح شد. این تغییر در commit `bfe53edff57dc74490c30abb9fc1765c70455279` و مستند در `ad80439ec2c22c45cf1ed81e64eba84d64d7f087` است.
-- وضعیت Preview جدید: در انتظار build مجدد پس از حذف CPU limit صریح؛ D1 Preview مجزا باقی می‌ماند و D1 اصلی دست‌نخورده است.
-- وضعیت: 🟡 اصلاح اولیه E2E با شواهد CI سبز؛ آزمون نشست منقضی‌شده و پیکربندی Preview در انتظار اجرای مجدد CI و Cloudflare Preview build هستند.
+- Cloudflare Preview پس از اصلاح پلن Free: build `f5990899-1a8d-4a25-9060-ee7209a9489e` با outcome=`success` تکمیل شد؛ URL پیش‌نمایش: `https://feature-free-tier-passkey-auth-erp-api.pasoooir-erp.workers.dev`. فقط Preview ساخته شد، نه Production.
+- CI نهایی روی commit `b580a1368958998e121c7732e718ad5ddcea40aa`: foundation run [41021661760](https://github.com/pasoooir/Erp/actions/runs/41021661760) و live API smoke run [41021661787](https://github.com/pasoooir/Erp/actions/runs/41021661787) هر دو conclusion=success. foundation شامل 23/23 تست واحد، migration محلی، نصب Chromium و Worker + Chromium smoke موفق بود؛ log صریحاً `Worker + Chromium smoke passed` را ثبت کرد. Live API smoke نیز health، bootstrap status بدون تغییر داده، CORS و اتصال Pages/API را گذراند.
+- سناریوهای احراز هویت تأییدشده: رمز نامعتبر پنل را مخفی نگه می‌دارد؛ Passkey معتبر پنل را نمایش می‌دهد؛ نشست منقضی‌شده در `/api/v1/auth/me` و API داده 401 می‌گیرد؛ نشست logout/revoke شده 401 می‌گیرد؛ کاربر فاقد مجوز 403 می‌گیرد و دسترسی بین محدوده‌های سازمانی رد می‌شود.
+- وضعیت: 🟢 رفع خطای Playwright و معیارهای احراز هویت این مأموریت با شواهد CI تأیید شد. 🟡 اندازه‌گیری مستقل CPU برای کل چرخه WebAuthn و تکمیل کامل مهاجرت lifecycle کاربران، خارج از معیار رفع خطای پنل و همچنان باز است.
 - مرز عملیاتی: فقط فایل تست در شاخه توسعه تغییر کرد؛ هیچ merge به `main`، deploy، migration راه‌دور، تغییر Secret یا دست‌کاری داده واقعی انجام نشد.
