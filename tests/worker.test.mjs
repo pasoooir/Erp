@@ -524,9 +524,12 @@ test("HR time events enforce scope, ordering, idempotency, leave overlap and app
     ...json({employee_id:employee.id,event_type,occurred_at,idempotency_key}),
     headers:{"content-type":"application/json",cookie:adminCookie}
   });
-  const clockIn=await event("clock_in","2026-10-30T08:00:00Z","shift-20261030-in");
-  assert.equal(clockIn.status,201);
-  assert.equal((await event("clock_in","2026-10-30T08:00:00Z","shift-20261030-in")).status,409);
+  const concurrent=await Promise.all([
+    event("clock_in","2026-10-30T08:00:00Z","shift-20261030-in-a"),
+    event("clock_in","2026-10-30T08:00:00Z","shift-20261030-in-b")
+  ]);
+  assert.deepEqual(concurrent.map(response=>response.status).sort(),[201,409]);
+  const clockIn=concurrent.find(response=>response.status===201);
   assert.equal((await event("clock_in","2026-10-30T08:01:00Z","duplicate-in")).status,409);
   assert.equal((await event("clock_out","2026-10-30T07:59:00Z","early-out")).status,409);
   const clockOut=await event("clock_out","2026-10-30T16:00:00Z","shift-20261030-out");
