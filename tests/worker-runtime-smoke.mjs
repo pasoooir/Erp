@@ -142,7 +142,7 @@ try {
   ));
   assert.equal(secondBootstrap.response.status,409);
 
-  const browserCookies=await page.context().cookies(base);
+  const browserCookies=await page.context().cookies(base+"/api/");
   const sessionCookie=browserCookies.find(item=>item.name==="erp_session");
   const cookie=sessionCookie?sessionCookie.name+"="+sessionCookie.value:"";
   assert.ok(cookie&&cookie.startsWith("erp_session="),"Passkey login should issue a session cookie");
