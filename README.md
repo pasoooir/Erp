@@ -116,3 +116,15 @@
 - نمونه ماژول ورود: `public/modules/auth/login/login-form.html`, `login-form.css`, `login-form.js` و سرویس Worker در `src/modules/auth/login/login-handler.js`.
 - هنگام انتقال فایل، تمام importها، مسیرهای Pages، تست‌ها، workflowها و مستندات را همان تغییر اصلاح کن؛ فایل قدیمی/تکراری بدون مصرف باقی نگذار.
 - این قاعده برای تمام توسعه‌های بعدی و تمام گفتگوهای پروژه الزام‌آور است.
+
+
+## معماری استقرار رایگان: GitHub Pages + Cloudflare Worker
+
+- **Frontend:** فقط GitHub Pages از طریق workflow در `.github/workflows/deploy-pages.yml` و خروجی پوشه `public/` منتشر می‌شود. این workflow به Cloudflare Pages وابسته نیست.
+- **Backend/API:** فقط Cloudflare Workers با ورودی `workers.js` و نام Worker برابر `erp-api` اجرا می‌شود؛ مسیرهای غیر `/api/*` از Worker سرویس داده نمی‌شوند.
+- **منطق API:** پیاده‌سازی فعلی routeها در `src/index.js` و ماژول‌های زیر `src/modules/` نگهداری می‌شود؛ `workers.js` ورودی رسمی و مرز اجرای Cloudflare Worker است.
+- **Database:** اتصال D1 فقط از binding سمت Worker با نام `DB` انجام می‌شود. مرورگر GitHub Pages هرگز مستقیماً به D1 دسترسی ندارد.
+- **مبدأ مجاز مرورگر:** `APP_ORIGIN=https://pasoooir.github.io`؛ تنظیم CORS و کوکی‌های نشست باید با این جداسازی Frontend/API سازگار بمانند.
+- **عدم استفاده از Cloudflare Pages:** فایل‌های Wrangler دیگر `assets` یا تنظیمات `previews` مخصوص Pages ندارند. برای انتشار رابط کاربری فقط GitHub Pages را استفاده کن.
+
+برای انتشار Frontend، GitHub Actions باید از شاخه `main` پوشه `public/` را منتشر کند. برای Backend، انتشار Worker یک عملیات مستقل است و نباید در workflow مربوط به GitHub Pages ادغام شود. هرگونه انتشار production یا migration دیتابیس زنده همچنان نیازمند تأیید صریح مالک سامانه است.
