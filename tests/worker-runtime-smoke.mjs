@@ -204,6 +204,27 @@ try {
   await page.locator('#hrContractForm input[name="signed_on"]').fill("2026-02-25");
   await page.locator("#hrContractForm button[type=submit]").click();
   await page.locator("#hrContractsTable tr").filter({hasText:"CON-UI-001"}).waitFor();
+  await page.locator("#hrTimePanel").waitFor({state:"visible"});
+  await page.locator('#hrTimeEventForm select[name="employee_id"]').selectOption({label:/EMP-UI-001/});
+  await page.locator('#hrTimeEventForm select[name="event_type"]').selectOption("clock_in");
+  await page.locator('#hrTimeEventForm input[name="occurred_at"]').fill("2026-10-30T08:00");
+  await page.locator("#hrTimeEventForm button[type=submit]").click();
+  await page.locator("#hrTimeEventsTable tr").filter({hasText:"EMP-UI-001"}).waitFor();
+  await page.locator('#hrTimeEventForm select[name="event_type"]').selectOption("clock_out");
+  await page.locator('#hrTimeEventForm input[name="occurred_at"]').fill("2026-10-30T16:00");
+  await page.locator("#hrTimeEventForm button[type=submit]").click();
+  await page.locator("#hrTimeEventsTable tr").filter({hasText:"خروج"}).waitFor();
+  await page.locator('#hrLeaveForm select[name="employee_id"]').selectOption({label:/EMP-UI-001/});
+  await page.locator('#hrLeaveForm input[name="leave_type"]').fill("استحقاقی");
+  await page.locator('#hrLeaveForm input[name="start_date"]').fill("2026-11-02");
+  await page.locator('#hrLeaveForm input[name="end_date"]').fill("2026-11-03");
+  await page.locator('#hrLeaveForm input[name="reason"]').fill("آزمون گردش مرخصی");
+  await page.locator("#hrLeaveForm button[type=submit]").click();
+  const leaveRow=page.locator("#hrLeaveTable tr").filter({hasText:"EMP-UI-001"});
+  await leaveRow.waitFor();
+  await leaveRow.locator('button[data-action="leave-decision"][data-status="approved"]').click();
+  await leaveRow.getByText("تأیید").waitFor();
+
   const outsideChild=await api("/api/v1/org-units",post({code:"DEPT2",name:"واحد خارج از محدوده",unit_type:"department",parent_id:listed.body.data.find(unit=>unit.code==="SITEB").id},{cookie:managerCookie}));
   assert.equal(outsideChild.response.status,403);
   assert.equal((await api("/api/v1/org-units",post({code:"ROOT2",name:"شرکت غیرمجاز",unit_type:"company"},{cookie:managerCookie}))).response.status,403);
