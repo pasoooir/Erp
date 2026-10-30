@@ -8,6 +8,8 @@ export function initializePersonnelModule({ api, notice, getUser }) {
   let employees = [];
   let units = [];
   let selectedEmployee = null;
+  let timeEvents = [];
+  let leaveRequests = [];
 
   function fillOrganizationSelects() {
     const orgSelect = employeeForm.elements.org_unit_id;
@@ -66,6 +68,8 @@ export function initializePersonnelModule({ api, notice, getUser }) {
       const response = await api("/api/v1/hr/employees?limit=100&offset=0", {}, true);
       employees = response.data || [];
       renderEmployees();
+      fillHrEmployeeOptions();
+      await loadTimeAndLeave();
     } catch (error) {
       $("hrEmployeesLoading").classList.add("hidden");
       notice(error.message, "error");
@@ -100,6 +104,65 @@ export function initializePersonnelModule({ api, notice, getUser }) {
     contractForm.elements.employee_id.value = employee.id;
     await loadContracts(employee.id);
   }
+
+
+  function fillHrEmployeeOptions() {
+    for (const id of ["hrTimeEventForm","hrLeaveForm"]) {
+      const select=$(id).elements.employee_id,previous=select.value;
+      select.replaceChildren(new Option("انتخاب کارمند",""));
+      for(const employee of employees)select.add(new Option(employee.employee_no+" — "+employee.display_name,employee.id));
+      if(employees.some(employee=>employee.id===previous))select.value=previous;
+    }
+  }
+  async function loadTimeAndLeave() {
+    const [timeResponse,leaveResponse]=await Promise.all([
+      api("/api/v1/hr/time-events?limit=100&offset=0",{},true),
+      api("/api/v1/hr/leave-requests?limit=100&offset=0",{},true)
+    ]);
+    timeEvents=timeResponse.data||[];leaveRequests=leaveResponse.data||[];
+    const timeBody=$("hrTimeEventsTable");timeBody.replaceChildren();
+    for(const item of timeEvents){
+      const row=document.createElement("tr");
+      for(const value of [item.employee_no,item.event_type==="clock_in"?"ورود":"خروج",new Date(item.occurred_at).toLocaleString("fa-IR",{timeZone:"UTC"})]){
+        const cell=document.createElement("td");cell.textContent=value;row.appendChild(cell);
+      }
+      timeBody.appendChild(row);
+    }
+    const leaveBody=$("hrLeaveTable");leaveBody.replaceChildren();
+    const labels={pending:"در انتظار",approved:"تأیید",rejected:"رد",cancelled:"لغو"};
+    for(const item of leaveRequests){
+      const row=document.createElement("tr");
+      for(const value of [item.employee_no,item.leave_type,item.start_date,item.end_date,labels[item.status]||item.status,item.decision_note||item.reason||"—"]){
+        const cell=document.createElement("td");cell.textContent=value;row.appendChild(cell);
+      }
+      const actions=document.createElement("td");
+      if(item.status==="pending"){
+        for(const [status,label] of [["approved","تأیید"],["rejected","رد"]]){
+          const button=document.createElement("button");button.type="button";button.className="button small";
+          button.dataset.action="leave-decision";button.dataset.id=item.id;button.dataset.status=status;button.textContent=label;actions.appendChild(button);
+        }
+      } else actions.textContent="—";
+      row.appendChild(actions);leaveBody.appendChild(row);
+    }
+  }
+  $("hrTimeEventForm").addEventListener("submit",async event=>{
+    event.preventDefault();const form=event.currentTarget,button=form.querySelector("button[type=submit]");button.disabled=true;
+    const data=formValues(form);data.occurred_at=new Date(data.occurred_at).toISOString();data.idempotency_key=crypto.randomUUID();
+    try{await api("/api/v1/hr/time-events",{method:"POST",body:JSON.stringify(data)});form.reset();form.elements.employee_id.value=data.employee_id;notice("رویداد تردد ثبت و ممیزی شد.","success");await loadTimeAndLeave();}
+    catch(error){notice(error.message,"error");}finally{button.disabled=false;}
+  });
+  $("hrLeaveForm").addEventListener("submit",async event=>{
+    event.preventDefault();const form=event.currentTarget,button=form.querySelector("button[type=submit]");button.disabled=true;
+    const data=formValues(form);
+    try{await api("/api/v1/hr/leave-requests",{method:"POST",body:JSON.stringify(data)});form.reset();form.elements.employee_id.value=data.employee_id;notice("درخواست مرخصی ثبت شد.","success");await loadTimeAndLeave();}
+    catch(error){notice(error.message,"error");}finally{button.disabled=false;}
+  });
+  $("hrLeaveTable").addEventListener("click",async event=>{
+    const button=event.target.closest("button[data-action='leave-decision']");if(!button)return;
+    button.disabled=true;
+    try{await api("/api/v1/hr/leave-requests/"+encodeURIComponent(button.dataset.id),{method:"PATCH",body:JSON.stringify({status:button.dataset.status})});notice("تصمیم مرخصی ثبت شد.","success");await loadTimeAndLeave();}
+    catch(error){notice(error.message,"error");button.disabled=false;}
+  });
 
   employeeForm.elements.org_unit_id.addEventListener("change", fillPositions);
   employeeForm.addEventListener("submit", async event => {

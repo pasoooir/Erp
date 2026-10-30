@@ -7,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import worker from "../src/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql","0003_auth_username.sql","0004_hr_personnel.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
+const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql","0003_auth_username.sql","0004_hr_personnel.sql","0005_hr_time.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
 class Statement {
   constructor(db, sql, values = []) { this.db=db; this.sql=sql; this.values=values; }
   bind(...values) { return new Statement(this.db, this.sql, values); }
@@ -494,4 +494,77 @@ test("HR employee and contract APIs enforce organization scope, validation, and 
   assert.equal((await parse(ended)).data.employment_status,"terminated");
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='employee.created'").get().n,2);
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='employee_contract.created'").get().n,1);
+});
+
+
+test("HR time events enforce scope, ordering, idempotency, leave overlap and approval audit", async () => {
+  const {call,DB}=harness();
+  const bootstrap=await call("/api/v1/auth/bootstrap",{
+    ...json({email:"time-admin@example.com",display_name:"Time Admin",password:"strong-password-123"}),
+    headers:{"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"}
+  });
+  assert.equal(bootstrap.status,201);
+  const adminCookie=cookieFrom(bootstrap);
+  async function unit(code,name,unit_type,parent_id=null){
+    const response=await call("/api/v1/org-units",{...json({code,name,unit_type,parent_id}),headers:{"content-type":"application/json",cookie:adminCookie}});
+    assert.equal(response.status,201);
+    return (await parse(response)).data;
+  }
+  const company=await unit("TIMECOMP","شرکت تردد","company");
+  const site=await unit("TIMESITE","کارخانه تردد","site",company.id);
+  const department=await unit("TIMEDEP","واحد تردد","department",site.id);
+  const employeeResponse=await call("/api/v1/hr/employees",{
+    ...json({employee_no:"TIME-001",display_name:"کارمند تردد",org_unit_id:department.id,hired_on:"2026-01-01"}),
+    headers:{"content-type":"application/json",cookie:adminCookie}
+  });
+  assert.equal(employeeResponse.status,201);
+  const employee=(await parse(employeeResponse)).data;
+
+  const event=(event_type,occurred_at,idempotency_key)=>call("/api/v1/hr/time-events",{
+    ...json({employee_id:employee.id,event_type,occurred_at,idempotency_key}),
+    headers:{"content-type":"application/json",cookie:adminCookie}
+  });
+  const concurrent=await Promise.all([
+    event("clock_in","2026-10-30T08:00:00Z","shift-20261030-in-a"),
+    event("clock_in","2026-10-30T08:00:00Z","shift-20261030-in-b")
+  ]);
+  assert.deepEqual(concurrent.map(response=>response.status).sort(),[201,409]);
+  const clockIn=concurrent.find(response=>response.status===201);
+  assert.equal((await event("clock_in","2026-10-30T08:01:00Z","duplicate-in")).status,409);
+  assert.equal((await event("clock_out","2026-10-30T07:59:00Z","early-out")).status,409);
+  const clockOut=await event("clock_out","2026-10-30T16:00:00Z","shift-20261030-out");
+  assert.equal(clockOut.status,201);
+  assert.equal((await event("clock_out","2026-10-30T17:00:00Z","duplicate-out")).status,409);
+  const events=await call("/api/v1/hr/time-events?employee_id="+employee.id,{headers:{cookie:adminCookie}});
+  assert.equal(events.status,200);
+  assert.equal((await parse(events)).data.length,2);
+
+  const leaveAttempts=await Promise.all([
+    call("/api/v1/hr/leave-requests",{
+      ...json({employee_id:employee.id,leave_type:"annual",start_date:"2026-11-02",end_date:"2026-11-04",reason:"درخواست آزمایشی"}),
+      headers:{"content-type":"application/json",cookie:adminCookie}
+    }),
+    call("/api/v1/hr/leave-requests",{
+      ...json({employee_id:employee.id,leave_type:"annual",start_date:"2026-11-04",end_date:"2026-11-05"}),
+      headers:{"content-type":"application/json",cookie:adminCookie}
+    })
+  ]);
+  assert.deepEqual(leaveAttempts.map(response=>response.status).sort(),[201,409]);
+  const leave=(await parse(leaveAttempts.find(response=>response.status===201)));
+  const leaveId=leave.data.id;
+  const decisions=await Promise.all([
+    call("/api/v1/hr/leave-requests/"+leaveId,{
+      ...json({status:"approved",decision_note:"تصمیم هم‌زمان"}),
+      method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}
+    }),
+    call("/api/v1/hr/leave-requests/"+leaveId,{
+      ...json({status:"rejected"}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}
+    })
+  ]);
+  assert.deepEqual(decisions.map(response=>response.status).sort(),[200,409]);
+  const decided=(await parse(decisions.find(response=>response.status===200))).data;
+  assert.ok(["approved","rejected"].includes(decided.status));
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='employee_time_event.created'").get().n,2);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='employee_leave.created'").get().n,1);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action IN ('employee_leave.approved','employee_leave.rejected')").get().n,1);
 });
