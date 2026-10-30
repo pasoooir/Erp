@@ -456,6 +456,7 @@ async function route(request, env) {
     return json({ data: { bootstrap_required: !state || !state.bootstrap_complete } });
   }
   if (method === "POST" && url.pathname === "/api/v1/auth/bootstrap") return bootstrap(request, env);
+  const user = await sessionUser(request, env);
   const passkeyDeps = { fail, json, readJson, normalizeEmail, normalizeUsername, validEmail, validUsername,
     safeEqual, createSession, sessionCookie, audit };
   if (method === "POST" && url.pathname === "/api/v1/auth/passkey/bootstrap/options")
@@ -482,7 +483,6 @@ async function route(request, env) {
     if (activeUser) await audit(env, activeUser.id, "auth.logout", "user", activeUser.id);
     return json({ data: { logged_out: true } }, 200, { "set-cookie": sessionCookie("", 0) });
   }
-  const user = await sessionUser(request, env);
   if (method === "GET" && url.pathname === "/api/v1/auth/me") {
     if (!user) return fail(401, "unauthenticated", "برای ادامه وارد سامانه شو.");
     return json({ data: user });
