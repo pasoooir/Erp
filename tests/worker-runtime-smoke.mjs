@@ -147,6 +147,7 @@ try {
   await page.locator("#usersTable tr").filter({hasText:"manager@example.com"}).getByText(/ACME/).waitFor();
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"mobile page should not overflow horizontally");
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"HR attendance panel should not overflow on mobile");
   assert.deepEqual(pageErrors,[]);
 
   const badSecret=await api("/api/v1/auth/bootstrap",post(
@@ -215,7 +216,7 @@ try {
   await page.locator('#hrTimeEventForm input[name="occurred_at"]').fill("2026-10-30T16:00");
   await page.locator("#hrTimeEventForm button[type=submit]").click();
   await page.locator("#hrTimeEventsTable tr").filter({hasText:"خروج"}).waitFor();
-  await page.locator('#hrLeaveForm select[name="employee_id"]').selectOption({label:/EMP-UI-001/});
+  await page.locator('#hrLeaveForm select[name="employee_id"]').selectOption({label:"EMP-UI-001 — کارمند آزمایش منابع انسانی"});
   await page.locator('#hrLeaveForm input[name="leave_type"]').fill("استحقاقی");
   await page.locator('#hrLeaveForm input[name="start_date"]').fill("2026-11-02");
   await page.locator('#hrLeaveForm input[name="end_date"]').fill("2026-11-03");
