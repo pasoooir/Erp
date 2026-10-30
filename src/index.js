@@ -596,7 +596,7 @@ export default {
       for (const [key, value] of Object.entries(cors)) headers.set(key, value);
       return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
     } catch (error) {
-      console.error("worker.unhandled_error", { name: error?.name || "Error", message: String(error?.message || "unknown").slice(0, 180) });
+      console.log("worker.unhandled_error", { name: error?.name || "Error", message: String(error?.message || "unknown").slice(0, 180) });
       return fail(500, "internal_error", "خطای داخلی رخ داد؛ اطلاعات حساس در پاسخ نمایش داده نمی‌شود.");
     }
   }
