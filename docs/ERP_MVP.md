@@ -1,42 +1,23 @@
-# ERP Factory Management MVP
+# وضعیت سند MVP قدیمی
 
-This repository contains a working ERP-style demo for the factory scenario described in the root `README.md` and `erp-project.json` planning files.
+> این سند از نسخه اولیه و نمایشی پروژه به‌جامانده و دیگر راهنمای اجرای سامانه فعلی نیست.
 
-## Stack
+## هشدار امنیتی
 
-- Node.js (no external dependency required)
-- File-based JSON persistence
-- Built-in HTTP server
-- Static dashboard UI
+- هیچ حساب مدیر پیش‌فرض، نام کاربری ثابت یا رمز عبور نمونه‌ای برای سامانه فعلی وجود ندارد.
+- هرگونه credential قدیمی که در نسخه‌های پیشین این سند ذکر شده بود، نامعتبر و غیرقابل استفاده است؛ آن را امتحان یا بازنشر نکنید.
+- راه‌اندازی مدیر فعلی فقط از مسیر bootstrap یک‌باره و با Secret سمت سرور انجام می‌شود. Secret و رمز مدیر باید توسط مالک سامانه به‌صورت خصوصی تعیین شوند.
 
-## Startup
+## معماری فعلی
 
-```bash
-npm start
-```
+- Frontend: GitHub Pages از پوشه `public/`.
+- Backend/API: Cloudflare Worker با ورودی `workers.js` و منطق route در `src/index.js`.
+- Database: Cloudflare D1 فقط از binding سمت Worker با نام `DB`.
+- Authentication: ورود با نام کاربری یا ایمیل و رمز عبور؛ نشست امن و RBAC سمت سرور.
+- مهاجرت‌ها و آزمون‌ها: پوشه‌های `migrations/` و `tests/`.
 
-Then open:
+برای وضعیت واقعی قابلیت‌ها، قراردادها و شواهد، به [README اصلی](../README.md)، [راهنمای پایه عملیاتی](./ERP_FOUNDATION.md)، [راهنمای API و استقرار](./ERP_API_DEPLOYMENT.md) و [دفتر اجرای پروژه](./PROJECT_EXECUTION_TRACKER.md) مراجعه کنید.
 
-```text
-http://localhost:3000
-```
+## وضعیت ماژول‌ها
 
-## Demo credentials
-
-- Email: `admin@cartech.ir`
-- Password: `admin123`
-
-## Included modules
-
-- Organization management
-- User roles and access
-- Product catalog and inventory
-- Purchase orders
-- Sales orders
-- Finance and accounting entries
-- Audit log and recent activity
-- Dashboard KPIs
-
-## Notes
-
-This is an MVP aligned to the project planning schema, not a large enterprise deployment. The goal is to provide a realistic ERP foundation that matches the repository guidance and can be extended module by module.
+وجود نام یک ماژول در برنامه یا نسخه نمایشی قدیمی، اثبات پیاده‌سازی آن در سامانه فعلی نیست. ماژول‌های منابع انسانی، حقوق و دستمزد، انبار، خرید، فروش، حسابداری، تولید، کیفیت و دارایی‌ها باید مستقل از پایه احراز هویت و ساختار سازمانی، با مدل داده، API، رابط کاربری، کنترل دسترسی و آزمون‌های قابل بازبینی تکمیل شوند.
