@@ -22,7 +22,7 @@
     <div class="mark" aria-hidden="true">ERP+</div>
     <h1>راه‌اندازی مدیر اولیه</h1>
     <p>این فرم فقط برای ساخت اولین حساب مدیر سامانه است. سرور فقط زمانی آن را می‌پذیرد که راه‌اندازی اولیه هنوز تکمیل نشده باشد.</p>
-    <div class="warning">کلید راه‌اندازی و رمز عبور فقط برای همین درخواست به API امن ارسال می‌شوند؛ این صفحه آن‌ها را ذخیره نمی‌کند. این صفحه را پس از ایجاد مدیر از مخزن حذف کنید.</div>
+    <div class="warning">این راه‌اندازی بدون رمز عبور انجام می‌شود. کلید خصوصی Passkey روی دستگاه یا حساب همگام‌سازی‌شده شما باقی می‌ماند و هرگز به سرور ارسال نمی‌شود. این صفحه را پس از ایجاد مدیر از مخزن حذف کنید.</div>
     <p id="availability" role="status" aria-live="polite">در حال بررسی وضعیت راه‌اندازی…</p>
     <form id="bootstrapForm" autocomplete="off" class="hidden">
       <label>کلید راه‌اندازی سرور
@@ -38,17 +38,10 @@
       <label>نام نمایشی
         <input name="display_name" value="مدیر سامانه" maxlength="120" autocomplete="name" required>
       </label>
-      <label>رمز عبور جدید
-        <input name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
-        <small>حداقل ۱۲ نویسه. از رمز عبور منحصربه‌فرد استفاده کنید.</small>
-      </label>
-      <label>تکرار رمز عبور
-        <input name="password_confirm" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
-      </label>
-      <button id="submitButton" type="submit">ایجاد حساب مدیر</button>
+      <button id="submitButton" type="submit">ثبت Passkey و ایجاد مدیر</button>
     </form>
     <div id="message" class="status" role="status" aria-live="polite"></div>
-    <p class="foot">اتصال مستقیم HTTPS به Worker پروژه؛ رمز عبور در مرورگر هش نمی‌شود و فقط از طریق TLS به سرور ارسال می‌شود تا سرور آن را با PBKDF2 هش کند.</p>
+    <p class="foot">ورود مدیر با Passkey و تأیید محلی دستگاه انجام می‌شود؛ هیچ رمز عبوری در سرور ذخیره یا پردازش نمی‌شود.</p>
   </main>
 <script>
 (() => {
@@ -85,40 +78,35 @@
       form.classList.add("hidden");
     }
   }
+  const toBase64Url = buffer => { const bytes = new Uint8Array(buffer); let binary = ""; for (const byte of bytes) binary += String.fromCharCode(byte); return btoa(binary).split("=").join("").split("+").join("-").split("/").join("_"); };
+  const fromBase64Url = value => { const base64 = value.split("-").join("+").split("_").join("/") + "=".repeat((4 - value.length % 4) % 4); return Uint8Array.from(atob(base64), char => char.charCodeAt(0)).buffer; };
+  const serializeCredential = credential => ({
+    id: credential.id, rawId: toBase64Url(credential.rawId), type: credential.type,
+    authenticatorAttachment: credential.authenticatorAttachment,
+    response: { clientDataJSON: toBase64Url(credential.response.clientDataJSON), attestationObject: toBase64Url(credential.response.attestationObject), transports: credential.response.getTransports ? credential.response.getTransports() : [] },
+    clientExtensionResults: credential.getClientExtensionResults()
+  });
   form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    setMessage("");
-    if (!form.reportValidity()) return;
-    const data = new FormData(form);
-    const password = String(data.get("password") || "");
-    const confirmation = String(data.get("password_confirm") || "");
-    if (password !== confirmation) { setMessage("تکرار رمز عبور یکسان نیست.", "error"); return; }
-    if (password.length < 12) { setMessage("رمز عبور باید حداقل ۱۲ نویسه باشد.", "error"); return; }
-    button.disabled = true;
-    button.textContent = "در حال ایجاد حساب…";
+    event.preventDefault(); setMessage(""); if (!form.reportValidity()) return;
+    if (!window.isSecureContext || !navigator.credentials?.create) { setMessage("مرورگر یا مبدأ فعلی از Passkey پشتیبانی نمی‌کند؛ از HTTPS و مرورگر به‌روز استفاده کنید.", "error"); return; }
+    const data = new FormData(form); const secret = String(data.get("bootstrap_secret") || "");
+    const profile = { username:String(data.get("username")||"").trim(), email:String(data.get("email")||"").trim(), display_name:String(data.get("display_name")||"").trim() };
+    button.disabled = true; button.textContent = "در حال آماده‌سازی Passkey…";
     try {
-      const response = await fetch(API + "/api/v1/auth/bootstrap", {
-        method:"POST", mode:"cors", credentials:"include", cache:"no-store",
-        headers:{"Content-Type":"application/json","Accept":"application/json","X-Bootstrap-Secret":String(data.get("bootstrap_secret") || "")},
-        body:JSON.stringify({username:String(data.get("username")||"").trim(),email:String(data.get("email")||"").trim(),display_name:String(data.get("display_name")||"").trim(),password})
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(errorText(result?.error?.code));
-      form.reset();
-      setMessage("حساب مدیر با موفقیت ایجاد شد. اکنون به صفحه اصلی منتقل می‌شوید.", "success");
-      availability.textContent = "راه‌اندازی اولیه تکمیل شد.";
-      form.classList.add("hidden");
+      const headers = {"Content-Type":"application/json","Accept":"application/json","X-Bootstrap-Secret":secret};
+      const optionsResponse = await fetch(API + "/api/v1/auth/passkey/bootstrap/options", {method:"POST",mode:"cors",credentials:"omit",cache:"no-store",headers,body:JSON.stringify(profile)});
+      const optionsResult = await optionsResponse.json().catch(() => ({})); if (!optionsResponse.ok) throw new Error(errorText(optionsResult?.error?.code));
+      const options = optionsResult.data; options.challenge = fromBase64Url(options.challenge); options.user.id = fromBase64Url(options.user.id);
+      if (options.excludeCredentials) options.excludeCredentials = options.excludeCredentials.map(item => ({...item,id:fromBase64Url(item.id)}));
+      const credential = await navigator.credentials.create({publicKey:options}); if (!credential) throw new Error("ثبت Passkey لغو شد.");
+      button.textContent = "در حال تأیید Passkey…";
+      const verifyResponse = await fetch(API + "/api/v1/auth/passkey/bootstrap/verify", {method:"POST",mode:"cors",credentials:"include",cache:"no-store",headers,body:JSON.stringify({challenge:optionsResult.data.challenge,response:serializeCredential(credential)})});
+      const verifyResult = await verifyResponse.json().catch(() => ({})); if (!verifyResponse.ok) throw new Error(errorText(verifyResult?.error?.code));
+      form.reset(); setMessage("Passkey ثبت شد و حساب مدیر با موفقیت ایجاد شد. اکنون به صفحه ورود منتقل می‌شوید.", "success"); availability.textContent = "راه‌اندازی اولیه تکمیل شد."; form.classList.add("hidden");
       window.setTimeout(() => { window.location.href = new URL("./index.html", window.location.href).href; }, 1600);
     } catch (error) {
-      setMessage(error instanceof TypeError ? "ارتباط با سرور برقرار نشد. اتصال اینترنت و تنظیمات CORS را بررسی کنید." : String(error.message || "خطای نامشخص"), "error");
-      button.disabled = false;
-      button.textContent = "ایجاد حساب مدیر";
-      const secret = form.elements.namedItem("bootstrap_secret");
-      if (secret) secret.value = "";
-      const pass = form.elements.namedItem("password");
-      const confirm = form.elements.namedItem("password_confirm");
-      if (pass) pass.value = "";
-      if (confirm) confirm.value = "";
+      setMessage(error instanceof TypeError ? "ارتباط با سرور برقرار نشد. اتصال اینترنت، HTTPS و تنظیمات CORS را بررسی کنید." : String(error.message || "خطای نامشخص"), "error");
+      button.disabled = false; button.textContent = "ثبت Passkey و ایجاد مدیر"; const secretInput = form.elements.namedItem("bootstrap_secret"); if (secretInput) secretInput.value = "";
     }
   });
   checkStatus();
