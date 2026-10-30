@@ -54,3 +54,30 @@ CREATE TABLE IF NOT EXISTS employee_time_state (
   open_session INTEGER NOT NULL CHECK (open_session IN (0,1)),
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TRIGGER IF NOT EXISTS employee_leave_no_overlap_insert
+BEFORE INSERT ON employee_leave_requests
+WHEN NEW.status IN ('pending','approved')
+BEGIN
+  SELECT RAISE(ABORT,'leave_overlap')
+  WHERE EXISTS (
+    SELECT 1 FROM employee_leave_requests existing
+    WHERE existing.employee_id=NEW.employee_id
+      AND existing.status IN ('pending','approved')
+      AND existing.start_date<=NEW.end_date
+      AND existing.end_date>=NEW.start_date
+  );
+END;
+CREATE TRIGGER IF NOT EXISTS employee_leave_no_overlap_update
+BEFORE UPDATE OF status,start_date,end_date,employee_id ON employee_leave_requests
+WHEN NEW.status IN ('pending','approved')
+BEGIN
+  SELECT RAISE(ABORT,'leave_overlap')
+  WHERE EXISTS (
+    SELECT 1 FROM employee_leave_requests existing
+    WHERE existing.id<>NEW.id AND existing.employee_id=NEW.employee_id
+      AND existing.status IN ('pending','approved')
+      AND existing.start_date<=NEW.end_date
+      AND existing.end_date>=NEW.start_date
+  );
+END;
