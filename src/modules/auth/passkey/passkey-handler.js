@@ -84,7 +84,8 @@ export async function passkeyBootstrapVerify(request, env, deps) {
       response, expectedChallenge: challenge, expectedOrigin: origin, expectedRPID: rpID,
       requireUserVerification: true, supportedAlgorithmIDs: [-7, -257],
     });
-  } catch {
+  } catch (error) {
+    console.error("auth.passkey_registration_verification_failed", { name: error?.name || "Error", message: String(error?.message || "unknown").slice(0, 180) });
     return fail(400, "passkey_verification_failed", "اعتبارسنجی Passkey ناموفق بود.");
   }
   if (!verification.verified || !verification.registrationInfo)
