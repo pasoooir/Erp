@@ -1,10 +1,13 @@
 name = "erp-api"
 main = "src/index.js"
 compatibility_date = "2026-10-28"
+compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
 [vars]
 APP_ORIGIN = "https://pasoooir.github.io"
+WEBAUTHN_RP_ID = "pasoooir.github.io"
+WEBAUTHN_ORIGIN = "https://pasoooir.github.io"
 
 [assets]
 directory = "./public"
