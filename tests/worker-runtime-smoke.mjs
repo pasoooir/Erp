@@ -7,7 +7,7 @@ import { chromium } from "playwright";
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const wrangler=path.join(root,"node_modules","wrangler","bin","wrangler.js");
 const port=8787;
-const base=`http://127.0.0.1:${port}`;
+const base=`http://localhost:${port}`;
 const secret=process.env.BOOTSTRAP_SECRET;
 if(!secret||secret.length<32)throw new Error("CI must provide a test-only BOOTSTRAP_SECRET");
 const child=spawn(process.execPath,[wrangler,"dev","--local","--ip","127.0.0.1","--port",String(port)],{cwd:root,env:process.env,stdio:["ignore","pipe","pipe"]});
