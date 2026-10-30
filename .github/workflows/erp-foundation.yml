@@ -51,5 +51,9 @@ jobs:
           WEBAUTHN_RP_ID: localhost
           WEBAUTHN_ORIGIN: http://localhost:8787
         run: |
-          printf '%s' "BOOTSTRAP_SECRET=$BOOTSTRAP_SECRET" > .dev.vars
+          cat > .dev.vars <<EOF
+          BOOTSTRAP_SECRET=$BOOTSTRAP_SECRET
+          WEBAUTHN_RP_ID=$WEBAUTHN_RP_ID
+          WEBAUTHN_ORIGIN=$WEBAUTHN_ORIGIN
+          EOF
           node tests/worker-runtime-smoke.mjs
