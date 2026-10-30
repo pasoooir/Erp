@@ -41,7 +41,7 @@ try {
 
   browser=await chromium.launch({headless:true});
   const page=await browser.newPage({viewport:{width:1280,height:900}});
-  const pageErrors=[];page.on("pageerror",error=>pageErrors.push(error.message));
+  const pageErrors=[];page.on("pageerror",error=>pageErrors.push(error.message));\n  const browserDiagnostics=[];\n  page.on("console",message=>browserDiagnostics.push("console:"+message.type()+":"+message.text()));\n  page.on("requestfailed",request=>browserDiagnostics.push("requestfailed:"+request.url()+":"+request.failure()?.errorText));\n  page.on("response",response=>{if(response.url().includes("/api/v1/auth/passkey/"))browserDiagnostics.push("response:"+response.status()+":"+response.url());});
   const cdp=await page.context().newCDPSession(page);
   await cdp.send("WebAuthn.enable");
   await cdp.send("WebAuthn.addVirtualAuthenticator",{options:{protocol:"ctap2",transport:"internal",hasResidentKey:true,hasUserVerification:true,isUserVerified:true}});
@@ -56,7 +56,7 @@ try {
     const app=document.querySelector("#appPanel"),notice=document.querySelector("#notice");
     return (app&&!app.classList.contains("hidden")) || (notice&&notice.classList.contains("error"));
   },null,{timeout:30000});
-  if(await page.locator("#appPanel").isHidden()) throw new Error("Passkey bootstrap failed: "+await page.locator("#notice").innerText()+"\\nWorker output: "+output);
+  if(await page.locator("#appPanel").isHidden()) throw new Error("Passkey bootstrap failed: "+await page.locator("#notice").innerText()+"\\nBrowser diagnostics: "+browserDiagnostics.join(" | ")+"\\nPage errors: "+pageErrors.join(" | ")+"\\nWorker output: "+output);
 
   assert.equal(await page.locator("html").getAttribute("dir"),"rtl");
   assert.equal(await page.locator("html").getAttribute("lang"),"fa");
