@@ -1,4 +1,9 @@
 import { authenticateWithPassword } from "./modules/auth/login/login-handler.js";
+import {
+  passkeyBootstrapOptions, passkeyBootstrapVerify,
+  passkeyRegistrationOptions, passkeyRegistrationVerify,
+  passkeyAuthenticationOptions, passkeyAuthenticationVerify,
+} from "./modules/auth/passkey/passkey-handler.js";
 const SESSION_SECONDS = 12 * 60 * 60;
 const PASSWORD_ITERATIONS = 310_000;
 const COOKIE_NAME = "erp_session";
@@ -451,6 +456,24 @@ async function route(request, env) {
     return json({ data: { bootstrap_required: !state || !state.bootstrap_complete } });
   }
   if (method === "POST" && url.pathname === "/api/v1/auth/bootstrap") return bootstrap(request, env);
+  const passkeyDeps = { fail, json, readJson, normalizeEmail, normalizeUsername, validEmail, validUsername,
+    safeEqual, createSession, sessionCookie, audit };
+  if (method === "POST" && url.pathname === "/api/v1/auth/passkey/bootstrap/options")
+    return passkeyBootstrapOptions(request, env, passkeyDeps);
+  if (method === "POST" && url.pathname === "/api/v1/auth/passkey/bootstrap/verify")
+    return passkeyBootstrapVerify(request, env, passkeyDeps);
+  if (method === "GET" && url.pathname === "/api/v1/auth/passkey/options")
+    return passkeyAuthenticationOptions(request, env, passkeyDeps);
+  if (method === "POST" && url.pathname === "/api/v1/auth/passkey/verify")
+    return passkeyAuthenticationVerify(request, env, passkeyDeps);
+  if (method === "POST" && url.pathname === "/api/v1/auth/passkeys/register/options") {
+    if (!user) return fail(401, "unauthenticated", "برای ثبت Passkey وارد سامانه شوید.");
+    return passkeyRegistrationOptions(request, env, user, passkeyDeps);
+  }
+  if (method === "POST" && url.pathname === "/api/v1/auth/passkeys/register/verify") {
+    if (!user) return fail(401, "unauthenticated", "برای ثبت Passkey وارد سامانه شوید.");
+    return passkeyRegistrationVerify(request, env, user, passkeyDeps);
+  }
   if (method === "POST" && url.pathname === "/api/v1/auth/login") return authenticateWithPassword(request, env, { readJson, fail, normalizeEmail, normalizeUsername, validEmail, validUsername, validPassword, sha256, verifyPassword, createSession, audit, json, sessionCookie, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MINUTES });
   if (method === "POST" && url.pathname === "/api/v1/auth/logout") {
     const token = cookieValue(request, COOKIE_NAME);
