@@ -1,6 +1,6 @@
 const isoDate = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
   Number.isFinite(Date.parse(value + "T00:00:00Z")) && new Date(value + "T00:00:00Z").toISOString().slice(0,10) === value;
-const isoInstant = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+const isoInstant = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
 const text = value => String(value ?? "").trim();
 const timeSelect = `SELECT t.id,t.employee_id,e.employee_no,e.display_name,e.org_unit_id,t.event_type,t.occurred_at,t.idempotency_key,t.created_at
   FROM employee_time_events t JOIN employees e ON e.id=t.employee_id`;
