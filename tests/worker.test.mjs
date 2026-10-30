@@ -119,6 +119,23 @@ test("login failure is generic, successful login issues a session, logout revoke
   await call("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
   assert.equal((await call("/api/v1/auth/me",{headers:{cookie}})).status,401);
 });
+test("expired sessions cannot access the authenticated API", async () => {
+  const {call,DB}=harness();
+  const bootstrap=await call("/api/v1/auth/bootstrap",{
+    ...json({email:"expired@example.com",display_name:"Expired Session",password:"strong-password-123"}),
+    headers:{"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"}
+  });
+  assert.equal(bootstrap.status,201);
+  const cookie=cookieFrom(bootstrap);
+  assert.equal((await call("/api/v1/auth/me",{headers:{cookie}})).status,200);
+  const token=cookie.slice("erp_session=".length);
+  const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(token));
+  const tokenHash=[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+  DB.sqlite.prepare("UPDATE sessions SET expires_at=datetime('now','-1 minute') WHERE token_hash=?").run(tokenHash);
+  assert.equal((await call("/api/v1/auth/me",{headers:{cookie}})).status,401);
+  assert.equal((await call("/api/v1/org-units",{headers:{cookie}})).status,401);
+});
+
 test("allows the exact GitHub Pages bootstrap preflight headers", async () => {
   const { call, env } = harness();
   env.APP_ORIGIN = "https://pasoooir.github.io";
