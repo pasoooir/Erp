@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   preview-smoke:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'fix/cloudflare-preview-safe-d1-config'
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'fix/cloudflare-preview-safe-d1-config' || github.event.pull_request.head.ref == 'test/cloudflare-preview-smoke-and-tracker'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
