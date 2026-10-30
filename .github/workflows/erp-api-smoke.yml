@@ -135,7 +135,7 @@ jobs:
             });
           '
       - name: Verify preview CORS allow/deny behavior
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'test/cloudflare-preview-safe-d1-config'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'test/cloudflare-preview-smoke-and-tracker'
         env:
           PREVIEW_API: https://fix-cloudflare-preview-safe-d1-config-erp-api.pasoooir-erp.workers.dev
         run: |
@@ -170,7 +170,9 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import { chromium } from "playwright";
-          const statusResponse = await fetch(API_BASE + "/api/v1/auth/status");
+          const apiBase = process.env.API_BASE;
+          const pagesBase = process.env.PAGES_BASE;
+          const statusResponse = await fetch(apiBase + "/api/v1/auth/status");
           if (!statusResponse.ok) throw new Error("Live auth status endpoint failed: " + statusResponse.status);
           const statusPayload = await statusResponse.json();
           if (typeof statusPayload?.data?.bootstrap_required !== "boolean") {
@@ -182,13 +184,13 @@ jobs:
           const pageErrors = [];
           page.on("pageerror", error => pageErrors.push(error.message));
           try {
-            await page.goto(PAGES_BASE, { waitUntil: "networkidle", timeout: 30000 });
+            await page.goto(pagesBase, { waitUntil: "networkidle", timeout: 30000 });
             await page.locator("#authPanel").waitFor({ state: "visible", timeout: 15000 });
             await page.locator("#loginForm").waitFor({ state: "visible" });
             await page.locator("#bootstrapForm").waitFor({ state: "hidden" });
             await page.locator('input[name="identifier"]').waitFor({ state: "visible" });
             await page.locator('input[name="password"]').waitFor({ state: "visible" });
-            await page.goto(PAGES_BASE + "?setup=1", { waitUntil: "networkidle", timeout: 30000 });
+            await page.goto(pagesBase + "?setup=1", { waitUntil: "networkidle", timeout: 30000 });
             if (bootstrapRequired) {
               await page.locator("#bootstrapForm").waitFor({ state: "visible" });
               await page.locator("#loginForm").waitFor({ state: "hidden" });
