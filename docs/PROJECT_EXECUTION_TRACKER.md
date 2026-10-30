@@ -120,3 +120,14 @@
 - workflow انتشار artifact از `public/` جداگانه موفق شده است؛ runهای انتشار فوق شاهد موفقیت سمت GitHub هستند، نه اثبات کارکرد ورود به D1.
 
 - **پاک‌سازی PRهای تکراری:** PRهای #3، #4 و #6 پس از ادغام مجموع تغییراتشان در PR #7 با توضیح روشن بسته شدند؛ PRهای نامرتبط #1 و #2 جداگانه باز مانده‌اند.
+
+
+## اصلاح معماری میزبانی — GitHub Pages و Cloudflare Worker مستقل
+
+| شناسه | معیار پذیرش | تغییر | وضعیت | شواهد/اقدام بعدی |
+|---|---|---|---|---|
+| ERP-HOSTING-ARCH-001 | Frontend مستقل از Cloudflare Pages روی GitHub Pages منتشر شود | workflow موجود `.github/workflows/deploy-pages.yml` پوشه `public/` را به GitHub Pages می‌فرستد؛ این مسیر حفظ می‌شود | completed | workflow باید پس از ادغام تغییرات، با اجرای واقعی Pages تأیید شود |
+| ERP-HOSTING-ARCH-002 | ورودی مستقل Cloudflare Worker با فایل `workers.js` وجود داشته باشد | `wrangler.toml` به `workers.js` اشاره می‌کند؛ این ورودی درخواست‌های `/api/*` را به منطق API موجود در `src/index.js` واگذار می‌کند | in_progress | اجرای `npm run check`، تست Worker و بررسی CI در PR |
+| ERP-HOSTING-ARCH-003 | پیکربندی Pages Assets/Preview از Worker جدا شود | `assets` و `previews` از `wrangler.toml` حذف شده‌اند؛ D1 binding و APP_ORIGIN باقی مانده‌اند | in_progress | بازبینی diff و اجرای CI؛ هیچ Worker production deploy یا D1 migration انجام نشده است |
+
+**مرز استقرار:** GitHub Pages برای رابط کاربری؛ Cloudflare Workers برای API؛ Cloudflare D1 فقط پشت Worker. Cloudflare Pages در مسیر انتشار این پروژه استفاده نمی‌شود.
