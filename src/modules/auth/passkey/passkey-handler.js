@@ -28,11 +28,13 @@ async function storeChallenge(DB, challenge, purpose, userId, metadata = {}) {
     .bind(challenge, purpose, userId || null, JSON.stringify(metadata), `+${CHALLENGE_TTL_MINUTES} minutes`).run();
 }
 async function takeChallenge(DB, challenge, purpose, userId = null) {
-  const row = await DB.prepare(`SELECT challenge, user_id, metadata_json FROM auth_challenges
-    WHERE challenge=? AND purpose=? AND expires_at>CURRENT_TIMESTAMP AND (? IS NULL OR user_id=?)
-    LIMIT 1`).bind(challenge, purpose, userId, userId).first();
-  if (row) await DB.prepare("DELETE FROM auth_challenges WHERE challenge=?").bind(challenge).run();
-  return row;
+  // A single DELETE ... RETURNING makes challenge consumption atomic. A SELECT
+  // followed by DELETE would allow two concurrent requests to verify one challenge.
+  return DB.prepare(`DELETE FROM auth_challenges
+    WHERE challenge=? AND purpose=? AND expires_at>CURRENT_TIMESTAMP
+      AND (? IS NULL OR user_id=?)
+    RETURNING challenge, user_id, metadata_json`)
+    .bind(challenge, purpose, userId, userId).first();
 }
 const safeUsername = (value) => String(value || "").trim().toLowerCase();
 const safeEmail = (value) => String(value || "").trim().toLowerCase();
