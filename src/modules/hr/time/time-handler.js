@@ -83,10 +83,15 @@ async function createLeave(request,env,user,helpers) {
   const overlap=await env.DB.prepare("SELECT id FROM employee_leave_requests WHERE employee_id=? AND status IN ('pending','approved') AND start_date<=? AND end_date>=? LIMIT 1").bind(employeeId,end,start).first();
   if(overlap)return fail(409,"leave_overlap","درخواست با مرخصی در انتظار یا تأییدشده هم‌پوشانی دارد.");
   const id=crypto.randomUUID();
-  await env.DB.batch([
-    env.DB.prepare("INSERT INTO employee_leave_requests (id,employee_id,leave_type,start_date,end_date,reason,created_by) VALUES (?,?,?,?,?,?,?)").bind(id,employeeId,leaveType,start,end,reason||null,user.id),
-    env.DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json) VALUES (?,?,?,?,?,?)").bind(crypto.randomUUID(),user.id,"employee_leave.created","employee_leave_request",id,JSON.stringify({employee_id:employeeId,leave_type:leaveType,start_date:start,end_date:end}))
-  ]);
+  try {
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO employee_leave_requests (id,employee_id,leave_type,start_date,end_date,reason,created_by) VALUES (?,?,?,?,?,?,?)").bind(id,employeeId,leaveType,start,end,reason||null,user.id),
+      env.DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json) VALUES (?,?,?,?,?,?)").bind(crypto.randomUUID(),user.id,"employee_leave.created","employee_leave_request",id,JSON.stringify({employee_id:employeeId,leave_type:leaveType,start_date:start,end_date:end}))
+    ]);
+  } catch(error) {
+    if(/leave_overlap/i.test(String(error)))return fail(409,"leave_overlap","درخواست با مرخصی در انتظار یا تأییدشده هم‌پوشانی دارد.");
+    throw error;
+  }
   return json({data:await env.DB.prepare(leaveSelect+" WHERE l.id=?").bind(id).first()},201);
 }
 async function decideLeave(request,id,env,user,helpers) {
@@ -97,12 +102,12 @@ async function decideLeave(request,id,env,user,helpers) {
   const status=text(body.status),note=text(body.decision_note);
   if(!["approved","rejected"].includes(status)||note.length>500)return fail(400,"validation_failed","وضعیت باید approved یا rejected و توضیح حداکثر ۵۰۰ نویسه باشد.");
   if(current.status!=="pending")return fail(409,"leave_already_decided","فقط درخواست در انتظار قابل تصمیم‌گیری است.");
-  await env.DB.batch([
+  const result=await env.DB.batch([
     env.DB.prepare("UPDATE employee_leave_requests SET status=?,decision_note=?,decided_by=?,decided_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(status,note||null,user.id,id),
-    env.DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json) VALUES (?,?,?,?,?,?)").bind(crypto.randomUUID(),user.id,"employee_leave."+status,"employee_leave_request",id,JSON.stringify({employee_id:current.employee_id}))
+    env.DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,entity_type,entity_id,metadata_json) SELECT ?,?,?,?,?,? WHERE changes()=1").bind(crypto.randomUUID(),user.id,"employee_leave."+status,"employee_leave_request",id,JSON.stringify({employee_id:current.employee_id}))
   ]);
+  if(Number(result[0]?.meta?.changes??0)!==1)return fail(409,"leave_already_decided","درخواست هم‌زمان توسط کاربر دیگری تعیین تکلیف شد.");
   const updated=await env.DB.prepare(leaveSelect+" WHERE l.id=?").bind(id).first();
-  if(updated.status!==status)return fail(409,"leave_already_decided","درخواست هم‌زمان توسط کاربر دیگری تعیین تکلیف شد.");
   return json({data:updated});
 }
 export async function handleHrTimeRequest(request,env,user,helpers) {
