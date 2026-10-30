@@ -146,6 +146,6 @@
 - پیاده‌سازی WebAuthn در [PR #12](https://github.com/pasoooir/Erp/pull/12) روی شاخه مستقل وجود دارد؛ foundation CI و live API smoke آن در runهای 41021661760 و 41021661787 موفق بوده و Cloudflare Preview نیز deploy شده است.
 - PR #12 هنوز با main فعلی یکپارچه نشده و ۱۶ commit از main عقب است. همچنین migration آن `0004_passkey_auth.sql` با migration HR در PR #20 شماره یکسان دارد؛ پیش از ادغام باید بازسازی و به شماره بعد از HR یعنی `0006_passkey_auth.sql` منتقل شود.
 - اندازه‌گیری مستقل CPU مسیرهای WebAuthn برای پلن Free هنوز ثبت نشده است. ورود رمز عبور و provisioning قدیمی نیز در PR #12 باقی مانده‌اند؛ دعوت/بازیابی passwordless و حذف PBKDF2 هنوز تکمیل نشده است.
-- فایل bootstrap شاخه Passkey دارای مقدارهای هویتی پیش‌فرض است و باید پیش از ادغام پاک‌سازی شود.
+- مقدارهای هویتی پیش‌فرض از فایل bootstrap در commit `361d9c5` حذف شده‌اند؛ اجرای CI کامل پس از این اصلاح و rebase هنوز لازم است.
 
 وضعیت Passkey در tracker به‌صورت 🟡/🔴 ثبت شده؛ سبز بودن CI شاخه PR #12 به معنی تکمیل مهاجرت احراز هویت یا آمادگی Production نیست.
