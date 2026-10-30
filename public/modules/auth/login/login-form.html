@@ -4,7 +4,7 @@
       <form id="bootstrapForm" class="form hidden" autocomplete="on">
         <label>کلید راه‌اندازی اولیه<input name="bootstrap_secret" type="password" autocomplete="off" minlength="32" required><small>این کلید فقط در همین درخواست ارسال می‌شود و در مرورگر ذخیره نمی‌شود.</small></label>
         <label>نام مدیر<input name="display_name" maxlength="120" autocomplete="name" required></label>
-        <label>نام کاربری مدیر<input name="username" minlength="3" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9._\\-]{2,63}" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="مثلاً admin" required><small>۳ تا ۶۴ نویسه؛ حروف لاتین، عدد، نقطه، زیرخط یا خط تیره</small></label>
+        <label>نام کاربری مدیر<input name="username" minlength="3" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9._\\x2d]{2,63}" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="مثلاً admin" required><small>۳ تا ۶۴ نویسه؛ حروف لاتین، عدد، نقطه، زیرخط یا خط تیره</small></label>
         <label>ایمیل مدیر<input name="email" type="email" maxlength="254" autocomplete="email" required></label>
         
         <button class="button" type="submit">ثبت Passkey و ایجاد نخستین مدیر</button>
