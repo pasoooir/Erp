@@ -6,7 +6,7 @@ import {
 } from "@simplewebauthn/server";
 
 const b64url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes)))
-  .replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+  .split("=").join("").split("+").join("-").split("/").join("_");
 const fromB64url = (value) => Uint8Array.from(
   atob(String(value).replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - String(value).length % 4) % 4)),
   (char) => char.charCodeAt(0),
