@@ -46,4 +46,4 @@ Migrationهای `0001_erp_foundation.sql`، `0002_scoped_rbac.sql` و `0003_auth
 - Cloudflare گزارش Build و Deployment موفق برای commit `5dfd09c` و deployment `825a79da-c32f-4f69-ab24-ea6629877b95` را در PR ثبت کرده است.
 - D1 preview هنگام بررسی صفر جدول داشت؛ این محیط هنوز migration نشده است. هیچ migration راه‌دور اجرا نکن.
 - PR #18 هنوز ادغام نشده است. موفقیت CI آن شامل ERP foundation run `41024735546` و live API smoke run `41024735521` است؛ دومی endpoint عملیاتی را فقط به‌صورت read-only بررسی می‌کند.
-- smoke test مستقل Preview در workflow `.github/workflows/erp-preview-smoke.yml` اضافه شده تا health/D1 و سیاست CORS را بدون نوشتن داده بررسی کند.
+- smoke test مستقل Preview در workflow `.github/workflows/erp-api-smoke.yml` اضافه شده تا health/D1 و سیاست CORS را بدون نوشتن داده بررسی کند.
