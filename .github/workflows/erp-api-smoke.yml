@@ -1,5 +1,4 @@
 name: ERP live API smoke test
-
 on:
   push:
     branches: [main]
@@ -16,10 +15,8 @@ on:
       - "public/modules/erp-shell/erp-shell.js"
       - "docs/ERP_API_DEPLOYMENT.md"
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   live-api-smoke:
     runs-on: ubuntu-latest
@@ -90,7 +87,6 @@ jobs:
           grep -qi '^access-control-allow-credentials: true' /tmp/bootstrap-preflight.headers
           grep -qi '^access-control-allow-headers:.*x-bootstrap-secret' /tmp/bootstrap-preflight.headers
           echo "Bootstrap preflight permits the custom secret header."
-
       - name: Verify bootstrap POST reaches API and returns readable CORS error
         env:
           API_BASE: https://erp-api.pasoooir-erp.workers.dev
@@ -106,7 +102,6 @@ jobs:
           grep -qi '^access-control-allow-origin: https://pasoooir.github.io' /tmp/bootstrap-denied.headers
           grep -q '"code":"bootstrap_denied"' /tmp/bootstrap-denied.json
           echo "Bootstrap POST reaches API; invalid secret is rejected with readable CORS response and no database mutation."
-
       - name: Verify credentialed CORS preflight for GitHub Pages
         env:
           API_BASE: https://erp-api.pasoooir-erp.workers.dev
@@ -121,3 +116,37 @@ jobs:
           grep -qi '^access-control-allow-origin: https://pasoooir.github.io' /tmp/preflight.headers
           grep -qi '^access-control-allow-credentials: true' /tmp/preflight.headers
           echo "GitHub Pages credentialed CORS preflight passed."
+      - name: Verify isolated Cloudflare preview health and D1 connectivity
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'test/cloudflare-preview-smoke-and-tracker'
+        env:
+          PREVIEW_API: https://fix-cloudflare-preview-safe-d1-config-erp-api.pasoooir-erp.workers.dev
+        run: |
+          set -euo pipefail
+          response="$(curl --fail-with-body --silent --show-error "$PREVIEW_API/api/health")"
+          printf '%s' "$response" | node -e '
+            let body="";
+            process.stdin.on("data",chunk=>body+=chunk).on("end",()=>{
+              const payload=JSON.parse(body);
+              if(payload?.data?.status!=="ok" || payload?.data?.database!=="connected") {
+                console.error("Preview Worker/D1 health check failed:",payload);
+                process.exit(1);
+              }
+              console.log("Isolated preview Worker and D1 connectivity passed.");
+            });
+          '
+      - name: Verify preview CORS allow/deny behavior
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'test/cloudflare-preview-smoke-and-tracker'
+        env:
+          PREVIEW_API: https://fix-cloudflare-preview-safe-d1-config-erp-api.pasoooir-erp.workers.dev
+        run: |
+          set -euo pipefail
+          allowed="$(curl --silent --output /dev/null --write-out '%{http_code}' -X OPTIONS \
+            -H 'Origin: https://pasoooir.github.io' \
+            -H 'Access-Control-Request-Method: GET' \
+            -H 'Access-Control-Request-Headers: content-type' \
+            "$PREVIEW_API/api/health")"
+          test "$allowed" = "204"
+          denied="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            -H 'Origin: https://attacker.example' "$PREVIEW_API/api/health")"
+          test "$denied" = "403"
+          echo "Preview CORS allow/deny checks passed."
