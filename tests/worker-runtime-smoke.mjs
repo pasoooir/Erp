@@ -173,7 +173,8 @@ try {
   assert.equal((await api("/api/v1/auth/me",{headers:{cookie}})).response.status,401);
   const managerRow=page.locator("#usersTable tr").filter({hasText:"manager@example.com"});
   await managerRow.locator('button[data-action="user-status"]').click();
-  await managerRow.getByText("غیرفعال").waitFor();
+  const usersAfterDeactivation=await api("/api/v1/users",{headers:{cookie}});
+  assert.equal(usersAfterDeactivation.body.data.find(item=>item.email==="manager@example.com")?.status,"disabled");
   assert.equal((await api("/api/v1/auth/me",{headers:{cookie:managerCookie}})).response.status,401);
 
   await page.locator("#logoutButton").click();
