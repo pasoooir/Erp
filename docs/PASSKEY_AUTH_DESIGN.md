@@ -17,7 +17,7 @@ Avoid password KDF work on every login and during first-admin creation. WebAuthn
   - `POST /api/v1/auth/passkey/verify`
 - First-admin form and ERP login support browser-native WebAuthn; signed-in users can enroll additional Passkeys.
 - RP ID/origin default to `pasoooir.github.io` / `https://pasoooir.github.io`. Local CI overrides them to the local Wrangler origin.
-- Worker compatibility includes `nodejs_compat`; configured CPU budget is 10 ms.
+- Worker compatibility includes `nodejs_compat`. Cloudflare Workers Free applies its platform-default 10 ms CPU limit; do not set `limits.cpu_ms` in Wrangler because explicit CPU limits are unsupported on the Free plan.
 
 ## Security properties
 
@@ -35,7 +35,7 @@ This is an additive rollout. Existing password accounts and the legacy password 
 ## Validation required before production
 
 1. Run the ERP foundation CI and local Cloudflare runtime smoke, including a virtual WebAuthn authenticator.
-2. Confirm the Worker CPU budget stays at or below 10 ms for registration verification and login verification.
+2. Measure registration and login verification on the Free plan and confirm execution fits the platform-default 10 ms CPU allowance; explicit `limits.cpu_ms` configuration is intentionally omitted for Free-plan compatibility.
 3. Test replay, expired challenge, wrong origin/RP ID, invalid signature, disabled user, counter rollback, and concurrent bootstrap.
 4. Apply migration only to a disposable D1 database.
 5. Verify the exact production Pages origin and RP ID before deployment.
