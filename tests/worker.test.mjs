@@ -539,27 +539,32 @@ test("HR time events enforce scope, ordering, idempotency, leave overlap and app
   assert.equal(events.status,200);
   assert.equal((await parse(events)).data.length,2);
 
-  const leave=await call("/api/v1/hr/leave-requests",{
-    ...json({employee_id:employee.id,leave_type:"annual",start_date:"2026-11-02",end_date:"2026-11-04",reason:"درخواست آزمایشی"}),
-    headers:{"content-type":"application/json",cookie:adminCookie}
-  });
-  assert.equal(leave.status,201);
-  const leaveId=(await parse(leave)).data.id;
-  const overlap=await call("/api/v1/hr/leave-requests",{
-    ...json({employee_id:employee.id,leave_type:"annual",start_date:"2026-11-04",end_date:"2026-11-05"}),
-    headers:{"content-type":"application/json",cookie:adminCookie}
-  });
-  assert.equal(overlap.status,409);
-  const approved=await call("/api/v1/hr/leave-requests/"+leaveId,{
-    ...json({status:"approved",decision_note:"تأیید آزمایشی"}),
-    method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}
-  });
-  assert.equal(approved.status,200);
-  assert.equal((await parse(approved)).data.status,"approved");
-  assert.equal((await call("/api/v1/hr/leave-requests/"+leaveId,{
-    ...json({status:"rejected"}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}
-  })).status,409);
+  const leaveAttempts=await Promise.all([
+    call("/api/v1/hr/leave-requests",{
+      ...json({employee_id:employee.id,leave_type:"annual",start_date:"2026-11-02",end_date:"2026-11-04",reason:"درخواست آزمایشی"}),
+      headers:{"content-type":"application/json",cookie:adminCookie}
+    }),
+    call("/api/v1/hr/leave-requests",{
+      ...json({employee_id:employee.id,leave_type:"annual",start_date:"2026-11-04",end_date:"2026-11-05"}),
+      headers:{"content-type":"application/json",cookie:adminCookie}
+    })
+  ]);
+  assert.deepEqual(leaveAttempts.map(response=>response.status).sort(),[201,409]);
+  const leave=(await parse(leaveAttempts.find(response=>response.status===201)));
+  const leaveId=leave.data.id;
+  const decisions=await Promise.all([
+    call("/api/v1/hr/leave-requests/"+leaveId,{
+      ...json({status:"approved",decision_note:"تصمیم هم‌زمان"}),
+      method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}
+    }),
+    call("/api/v1/hr/leave-requests/"+leaveId,{
+      ...json({status:"rejected"}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}
+    })
+  ]);
+  assert.deepEqual(decisions.map(response=>response.status).sort(),[200,409]);
+  const decided=(await parse(decisions.find(response=>response.status===200))).data;
+  assert.ok(["approved","rejected"].includes(decided.status));
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='employee_time_event.created'").get().n,2);
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='employee_leave.created'").get().n,1);
-  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='employee_leave.approved'").get().n,1);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action IN ('employee_leave.approved','employee_leave.rejected')").get().n,1);
 });
