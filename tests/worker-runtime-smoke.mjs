@@ -169,13 +169,13 @@ try {
   assert.equal((await api("/api/v1/org-units/"+listed.body.data.find(unit=>unit.code==="SITEB").id,{...post({name:"تغییر خارج از محدوده"}),method:"PATCH",headers:{cookie:managerCookie,"content-type":"application/json"}})).response.status,403);
   assert.equal((await api("/api/v1/users",{headers:{cookie:managerCookie}})).response.status,403);
 
-  await api("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
-  assert.equal((await api("/api/v1/auth/me",{headers:{cookie}})).response.status,401);
   const managerRow=page.locator("#usersTable tr").filter({hasText:"manager@example.com"});
   await managerRow.locator('button[data-action="user-status"]').click();
   const usersAfterDeactivation=await api("/api/v1/users",{headers:{cookie}});
   assert.equal(usersAfterDeactivation.body.data.find(item=>item.email==="manager@example.com")?.status,"disabled");
   assert.equal((await api("/api/v1/auth/me",{headers:{cookie:managerCookie}})).response.status,401);
+  await api("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
+  assert.equal((await api("/api/v1/auth/me",{headers:{cookie}})).response.status,401);
 
   await page.locator("#logoutButton").click();
   await page.locator("#loginForm").waitFor({state:"visible"});
