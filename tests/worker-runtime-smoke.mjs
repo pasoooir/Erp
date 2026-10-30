@@ -179,9 +179,16 @@ try {
 
   await page.locator("#logoutButton").click();
   await page.locator("#loginForm").waitFor({state:"visible"});
+  // The first administrator is Passkey-only: the server deliberately stores a
+  // non-password placeholder hash. A password login must fail closed and keep
+  // the protected application panel hidden.
   await page.locator('#loginForm input[name="identifier"]').fill("admin");
   await page.locator('#loginForm input[name="password"]').fill(password);
   await page.locator("#loginForm button[type=submit]").click();
+  await page.waitForFunction(() => document.querySelector("#notice")?.classList.contains("error"));
+  assert.equal(await page.locator("#appPanel").isHidden(), true, "invalid password must not reveal the application panel");
+  // The valid login path for this Passkey-only account is browser WebAuthn.
+  await page.locator("#passkeyLoginButton").click();
   await page.locator("#appPanel").waitFor({state:"visible"});
   await page.locator("#auditPanel").waitFor({state:"visible"});
   const auditProbe=await page.evaluate(async()=>{const response=await fetch("/api/v1/audit-events?limit=50&offset=0");return {status:response.status,body:await response.json()};});
