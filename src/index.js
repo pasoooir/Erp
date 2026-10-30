@@ -1,4 +1,9 @@
 import { authenticateWithPassword } from "./modules/auth/login/login-handler.js";
+import {
+  passkeyBootstrapOptions, passkeyBootstrapVerify,
+  passkeyRegistrationOptions, passkeyRegistrationVerify,
+  passkeyAuthenticationOptions, passkeyAuthenticationVerify,
+} from "./modules/auth/passkey/passkey-handler.js";
 const SESSION_SECONDS = 12 * 60 * 60;
 const PASSWORD_ITERATIONS = 310_000;
 const COOKIE_NAME = "erp_session";
@@ -451,6 +456,25 @@ async function route(request, env) {
     return json({ data: { bootstrap_required: !state || !state.bootstrap_complete } });
   }
   if (method === "POST" && url.pathname === "/api/v1/auth/bootstrap") return bootstrap(request, env);
+  const user = await sessionUser(request, env);
+  const passkeyDeps = { fail, json, readJson, normalizeEmail, normalizeUsername, validEmail, validUsername,
+    safeEqual, createSession, sessionCookie, audit };
+  if (method === "POST" && url.pathname === "/api/v1/auth/passkey/bootstrap/options")
+    return passkeyBootstrapOptions(request, env, passkeyDeps);
+  if (method === "POST" && url.pathname === "/api/v1/auth/passkey/bootstrap/verify")
+    return passkeyBootstrapVerify(request, env, passkeyDeps);
+  if (method === "GET" && url.pathname === "/api/v1/auth/passkey/options")
+    return passkeyAuthenticationOptions(request, env, passkeyDeps);
+  if (method === "POST" && url.pathname === "/api/v1/auth/passkey/verify")
+    return passkeyAuthenticationVerify(request, env, passkeyDeps);
+  if (method === "POST" && url.pathname === "/api/v1/auth/passkeys/register/options") {
+    if (!user) return fail(401, "unauthenticated", "برای ثبت Passkey وارد سامانه شوید.");
+    return passkeyRegistrationOptions(request, env, user, passkeyDeps);
+  }
+  if (method === "POST" && url.pathname === "/api/v1/auth/passkeys/register/verify") {
+    if (!user) return fail(401, "unauthenticated", "برای ثبت Passkey وارد سامانه شوید.");
+    return passkeyRegistrationVerify(request, env, user, passkeyDeps);
+  }
   if (method === "POST" && url.pathname === "/api/v1/auth/login") return authenticateWithPassword(request, env, { readJson, fail, normalizeEmail, normalizeUsername, validEmail, validUsername, validPassword, sha256, verifyPassword, createSession, audit, json, sessionCookie, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MINUTES });
   if (method === "POST" && url.pathname === "/api/v1/auth/logout") {
     const token = cookieValue(request, COOKIE_NAME);
@@ -459,7 +483,6 @@ async function route(request, env) {
     if (activeUser) await audit(env, activeUser.id, "auth.logout", "user", activeUser.id);
     return json({ data: { logged_out: true } }, 200, { "set-cookie": sessionCookie("", 0) });
   }
-  const user = await sessionUser(request, env);
   if (method === "GET" && url.pathname === "/api/v1/auth/me") {
     if (!user) return fail(401, "unauthenticated", "برای ادامه وارد سامانه شو.");
     return json({ data: user });
@@ -572,7 +595,8 @@ export default {
       const headers = new Headers(response.headers);
       for (const [key, value] of Object.entries(cors)) headers.set(key, value);
       return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
-    } catch {
+    } catch (error) {
+      console.log("worker.unhandled_error", { name: error?.name || "Error", message: String(error?.message || "unknown").slice(0, 180), stack: String(error?.stack || "").split("\n").slice(0, 6).join(" | ") });
       return fail(500, "internal_error", "خطای داخلی رخ داد؛ اطلاعات حساس در پاسخ نمایش داده نمی‌شود.");
     }
   }

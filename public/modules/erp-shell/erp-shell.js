@@ -26,13 +26,13 @@
     if(isAdmin)Array.from(select.options).forEach(option=>{option.selected=false;});
   }
   function showAuth(bootstrapRequired){
-    $("appPanel").classList.add("hidden");$("authPanel").classList.remove("hidden");$("logoutButton").classList.add("hidden");
+    $("appPanel").classList.add("hidden");$("authPanel").classList.remove("hidden");$("logoutButton").classList.add("hidden");$("registerPasskeyButton").classList.add("hidden");
     $("bootstrapForm").classList.toggle("hidden",!bootstrapRequired);$("loginForm").classList.toggle("hidden",bootstrapRequired);
     $("authTitle").textContent=bootstrapRequired?"راه‌اندازی امن اولیه":"ورود به سامانه";
     $("authDescription").textContent=bootstrapRequired?"نخستین مدیر را فقط یک بار بسازید. کلید راه‌اندازی باید در تنظیمات امن Worker باشد.":"با حساب فعال خود وارد شوید.";
   }
   function showApp(user){
-    currentUser=user;$("authPanel").classList.add("hidden");$("appPanel").classList.remove("hidden");$("logoutButton").classList.remove("hidden");
+    currentUser=user;$("authPanel").classList.add("hidden");$("appPanel").classList.remove("hidden");$("logoutButton").classList.remove("hidden");$("registerPasskeyButton").classList.remove("hidden");
     $("welcomeTitle").textContent="سلام، "+user.display_name;$("welcomeText").textContent="نقش‌ها: "+user.roles.map(role=>roleLabels[role]||role).join("، ");
     const isAdmin=user.roles.includes("admin"),canManage=isAdmin||user.roles.includes("org_manager");
     const companyOption=Array.from(forms.unit.elements.unit_type.options).find(option=>option.value==="company");
@@ -162,16 +162,93 @@
       }
     }
   }
+  const bufferToBase64Url = buffer => {
+    const bytes=new Uint8Array(buffer);let binary="";
+    for(const byte of bytes)binary+=String.fromCharCode(byte);
+    return btoa(binary).split("=").join("").split("+").join("-").split("/").join("_");
+  };
+  const base64UrlToBuffer = value => {
+    const base64=String(value).split("-").join("+").split("_").join("/")+"=".repeat((4-String(value).length%4)%4);
+    return Uint8Array.from(atob(base64),char=>char.charCodeAt(0)).buffer;
+  };
+  const serializePasskey = credential => ({
+    id:credential.id,rawId:bufferToBase64Url(credential.rawId),type:credential.type,
+    authenticatorAttachment:credential.authenticatorAttachment,
+    response:{
+      clientDataJSON:bufferToBase64Url(credential.response.clientDataJSON),
+      authenticatorData:bufferToBase64Url(credential.response.authenticatorData),
+      signature:bufferToBase64Url(credential.response.signature),
+      userHandle:credential.response.userHandle?bufferToBase64Url(credential.response.userHandle):null
+    },
+    clientExtensionResults:credential.getClientExtensionResults()
+  });
+  const serializeRegistrationPasskey = credential => ({
+    id:credential.id,rawId:bufferToBase64Url(credential.rawId),type:credential.type,
+    authenticatorAttachment:credential.authenticatorAttachment,
+    response:{
+      clientDataJSON:bufferToBase64Url(credential.response.clientDataJSON),
+      attestationObject:bufferToBase64Url(credential.response.attestationObject),
+      transports:credential.response.getTransports?credential.response.getTransports():[]
+    },
+    clientExtensionResults:credential.getClientExtensionResults()
+  });
   forms.bootstrap.addEventListener("submit",async event=>{
     event.preventDefault();const submit=forms.bootstrap.querySelector("button");submit.disabled=true;
     const data=formData(forms.bootstrap),secret=data.bootstrap_secret;delete data.bootstrap_secret;
-    try{await api("/api/v1/auth/bootstrap",{method:"POST",headers:{"x-bootstrap-secret":secret},body:JSON.stringify(data)});forms.bootstrap.reset();notice("مدیر اولیه ایجاد شد.","success");await refreshAuth();}
-    catch(e){notice(e.message,"error");}finally{submit.disabled=false;}
+    try{
+      if(!navigator.credentials?.create||!window.isSecureContext)throw new Error("این مرورگر از Passkey در مبدأ امن پشتیبانی نمی‌کند.");
+      const options=await api("/api/v1/auth/passkey/bootstrap/options",{method:"POST",headers:{"x-bootstrap-secret":secret},body:JSON.stringify(data)});
+      const challenge=options.challenge;options.challenge=base64UrlToBuffer(options.challenge);options.user.id=base64UrlToBuffer(options.user.id);
+      if(options.excludeCredentials)options.excludeCredentials=options.excludeCredentials.map(item=>({...item,id:base64UrlToBuffer(item.id)}));
+      const credential=await navigator.credentials.create({publicKey:options});
+      if(!credential)throw new Error("ثبت Passkey لغو شد.");
+      await api("/api/v1/auth/passkey/bootstrap/verify",{method:"POST",headers:{"x-bootstrap-secret":secret},body:JSON.stringify({challenge,response:serializeRegistrationPasskey(credential)})});
+      forms.bootstrap.reset();notice("Passkey مدیر اولیه ثبت شد.","success");await refreshAuth();
+    }catch(e){notice(e.message,"error");}finally{submit.disabled=false;}
   });
   forms.login.addEventListener("submit",async event=>{
     event.preventDefault();const submit=forms.login.querySelector("button[type=submit]");submit.disabled=true;submit.querySelector("span").textContent="در حال بررسی اطلاعات…";
     try{await api("/api/v1/auth/login",{method:"POST",body:JSON.stringify(formData(forms.login))});forms.login.reset();$("loginPassword").type="password";$("toggleLoginPassword").textContent="نمایش";$("toggleLoginPassword").setAttribute("aria-pressed","false");await refreshAuth();}
-    catch(e){notice(e.message,"error");}finally{submit.disabled=false;submit.querySelector("span").textContent="ورود امن به سامانه";}
+    catch(e){notice(e.message,"error");}finally{submit.disabled=false;submit.querySelector("span").textContent="ورود با رمز عبور";}
+  });
+  $("passkeyLoginButton").addEventListener("click",async()=>{
+    const button=$("passkeyLoginButton"),identifier=forms.login.elements.identifier.value.trim();
+    if(!identifier){notice("ابتدا نام کاربری یا ایمیل را وارد کنید.","error");forms.login.elements.identifier.focus();return;}
+    button.disabled=true;button.textContent="در حال تأیید Passkey…";
+    try{
+      if(!navigator.credentials?.get||!window.isSecureContext)throw new Error("این مرورگر از Passkey در مبدأ امن پشتیبانی نمی‌کند.");
+      const options=await api("/api/v1/auth/passkey/options?identifier="+encodeURIComponent(identifier));
+      const challenge=options.challenge;options.challenge=base64UrlToBuffer(options.challenge);
+      if(options.allowCredentials)options.allowCredentials=options.allowCredentials.map(item=>({...item,id:base64UrlToBuffer(item.id)}));
+      const assertion=await navigator.credentials.get({publicKey:options});
+      if(!assertion)throw new Error("ورود با Passkey لغو شد.");
+      await api("/api/v1/auth/passkey/verify",{method:"POST",body:JSON.stringify({challenge,response:serializePasskey(assertion)})});
+      forms.login.reset();await refreshAuth();
+    }catch(e){notice(e.message,"error");}
+    finally{button.disabled=false;button.textContent="ورود با Passkey";}
+  });
+  $("registerPasskeyButton").addEventListener("click",async()=>{
+    const button=$("registerPasskeyButton");button.disabled=true;button.textContent="در حال ثبت Passkey…";
+    try{
+      if(!navigator.credentials?.create||!window.isSecureContext)throw new Error("این مرورگر از Passkey در مبدأ امن پشتیبانی نمی‌کند.");
+      const options=await api("/api/v1/auth/passkeys/register/options",{method:"POST"});
+      const challenge=options.challenge;options.challenge=base64UrlToBuffer(options.challenge);options.user.id=base64UrlToBuffer(options.user.id);
+      if(options.excludeCredentials)options.excludeCredentials=options.excludeCredentials.map(item=>({...item,id:base64UrlToBuffer(item.id)}));
+      const credential=await navigator.credentials.create({publicKey:options});if(!credential)throw new Error("ثبت Passkey لغو شد.");
+      const response={
+        id:credential.id,rawId:bufferToBase64Url(credential.rawId),type:credential.type,
+        authenticatorAttachment:credential.authenticatorAttachment,
+        response:{
+          clientDataJSON:bufferToBase64Url(credential.response.clientDataJSON),
+          attestationObject:bufferToBase64Url(credential.response.attestationObject),
+          transports:credential.response.getTransports?credential.response.getTransports():[]
+        },
+        clientExtensionResults:credential.getClientExtensionResults()
+      };
+      await api("/api/v1/auth/passkeys/register/verify",{method:"POST",body:JSON.stringify({challenge,response})});
+      notice("Passkey با موفقیت به حساب شما اضافه شد. از این پس می‌توانید بدون رمز عبور وارد شوید.","success");
+    }catch(error){notice(error.message,"error");}
+    finally{button.disabled=false;button.textContent="ثبت Passkey این دستگاه";}
   });
   forms.unit.addEventListener("submit",async event=>{
     event.preventDefault();const submit=forms.unit.querySelector("button");submit.disabled=true;

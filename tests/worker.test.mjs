@@ -7,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import worker from "../src/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql","0003_auth_username.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
+const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql","0003_auth_username.sql","0004_passkey_auth.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
 class Statement {
   constructor(db, sql, values = []) { this.db=db; this.sql=sql; this.values=values; }
   bind(...values) { return new Statement(this.db, this.sql, values); }
@@ -119,6 +119,23 @@ test("login failure is generic, successful login issues a session, logout revoke
   await call("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
   assert.equal((await call("/api/v1/auth/me",{headers:{cookie}})).status,401);
 });
+test("expired sessions cannot access the authenticated API", async () => {
+  const {call,DB}=harness();
+  const bootstrap=await call("/api/v1/auth/bootstrap",{
+    ...json({email:"expired@example.com",display_name:"Expired Session",password:"strong-password-123"}),
+    headers:{"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"}
+  });
+  assert.equal(bootstrap.status,201);
+  const cookie=cookieFrom(bootstrap);
+  assert.equal((await call("/api/v1/auth/me",{headers:{cookie}})).status,200);
+  const token=cookie.slice("erp_session=".length);
+  const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(token));
+  const tokenHash=[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+  DB.sqlite.prepare("UPDATE sessions SET expires_at=datetime('now','-1 minute') WHERE token_hash=?").run(tokenHash);
+  assert.equal((await call("/api/v1/auth/me",{headers:{cookie}})).status,401);
+  assert.equal((await call("/api/v1/org-units",{headers:{cookie}})).status,401);
+});
+
 test("allows the exact GitHub Pages bootstrap preflight headers", async () => {
   const { call, env } = harness();
   env.APP_ORIGIN = "https://pasoooir.github.io";
@@ -394,4 +411,38 @@ test("admin can update user roles and scopes with audit and guardrails", async (
   assert.equal((await call("/api/v1/users/"+target.id,{...json({roles:["reader"],scope_ids:[]}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}})).status,400);
   assert.equal((await call("/api/v1/users/"+(await parse(bootstrap)).data.id,{...json({roles:["reader"],scope_ids:[companyId]}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}})).status,409);
   assert.equal((await call("/api/v1/users/"+target.id,{...json({roles:["reader"],scope_ids:[companyId]}),method:"PATCH"})).status,401);
+});
+
+test("passkey schema and bootstrap boundary are installed without touching production data", async () => {
+  const {call,DB}=harness();
+  assert.ok(DB.sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='webauthn_credentials'").get());
+  assert.ok(DB.sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='auth_challenges'").get());
+  const denied=await call("/api/v1/auth/passkey/bootstrap/options",json({
+    username:"firstadmin",email:"admin@example.com",display_name:"First Admin"
+  }));
+  assert.equal(denied.status,403);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM users").get().n,0);
+  assert.equal((await call("/api/v1/auth/passkeys/register/options",json({}))).status,401);
+});
+
+test("passkey bootstrap issues a short-lived single-use challenge and rejects replay", async () => {
+  const {call,DB}=harness();
+  const headers={"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"};
+  const options=await call("/api/v1/auth/passkey/bootstrap/options",{
+    ...json({username:"firstadmin",email:"first@example.com",display_name:"First Admin"}),headers
+  });
+  assert.equal(options.status,200);
+  const challenge=(await parse(options)).data.challenge;
+  assert.ok(challenge);
+  assert.equal(DB.sqlite.prepare("SELECT purpose FROM auth_challenges WHERE challenge=?").get(challenge).purpose,"bootstrap");
+  const invalid=await call("/api/v1/auth/passkey/bootstrap/verify",{
+    ...json({challenge,response:{}}),headers
+  });
+  assert.equal(invalid.status,400);
+  const replay=await call("/api/v1/auth/passkey/bootstrap/verify",{
+    ...json({challenge,response:{}}),headers
+  });
+  assert.equal(replay.status,400);
+  assert.equal((await parse(replay)).error.code,"challenge_expired");
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM users").get().n,0);
 });

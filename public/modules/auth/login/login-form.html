@@ -4,16 +4,17 @@
       <form id="bootstrapForm" class="form hidden" autocomplete="on">
         <label>کلید راه‌اندازی اولیه<input name="bootstrap_secret" type="password" autocomplete="off" minlength="32" required><small>این کلید فقط در همین درخواست ارسال می‌شود و در مرورگر ذخیره نمی‌شود.</small></label>
         <label>نام مدیر<input name="display_name" maxlength="120" autocomplete="name" required></label>
-        <label>نام کاربری مدیر<input name="username" minlength="3" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,63}" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="مثلاً admin" required><small>۳ تا ۶۴ نویسه؛ حروف لاتین، عدد، نقطه، زیرخط یا خط تیره</small></label>
+        <label>نام کاربری مدیر<input name="username" minlength="3" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9._\\x2d]{2,63}" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="مثلاً admin" required><small>۳ تا ۶۴ نویسه؛ حروف لاتین، عدد، نقطه، زیرخط یا خط تیره</small></label>
         <label>ایمیل مدیر<input name="email" type="email" maxlength="254" autocomplete="email" required></label>
-        <label>رمز عبور مدیر<input name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required><small>حداقل ۱۲ نویسه؛ رمز به‌صورت متن ساده ذخیره نمی‌شود.</small></label>
-        <button class="button" type="submit">ایجاد نخستین مدیر</button>
+        
+        <button class="button" type="submit">ثبت Passkey و ایجاد نخستین مدیر</button>
       </form>
       <form id="loginForm" class="form hidden" autocomplete="on">
         <label>نام کاربری یا ایمیل<input name="identifier" type="text" minlength="3" maxlength="254" autocomplete="username" inputmode="text" autocapitalize="none" spellcheck="false" dir="ltr" placeholder="نام کاربری یا name@company.com" required></label>
         <label>رمز عبور<div class="password-control"><input id="loginPassword" name="password" type="password" maxlength="128" autocomplete="current-password" dir="ltr" placeholder="رمز عبور خود را وارد کنید" required><button id="toggleLoginPassword" class="password-toggle" type="button" aria-label="نمایش رمز عبور" aria-pressed="false">نمایش</button></div></label>
         <div class="login-help"><span class="login-help-icon" aria-hidden="true">i</span><span>اطلاعات ورود شما به‌صورت امن ارسال می‌شود.</span></div>
-        <button class="button login-submit" type="submit"><span>ورود امن به سامانه</span><span aria-hidden="true">←</span></button>
+        <button class="button login-submit" type="submit"><span>ورود با رمز عبور</span><span aria-hidden="true">←</span></button>
+        <button id="passkeyLoginButton" class="button secondary" type="button">ورود با Passkey</button>
       </form>
       <div class="auth-card-footer">با ورود، استفاده از سامانه مطابق سطح دسترسی حساب شما خواهد بود.</div>
       </div>

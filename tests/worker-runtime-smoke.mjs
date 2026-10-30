@@ -7,7 +7,7 @@ import { chromium } from "playwright";
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const wrangler=path.join(root,"node_modules","wrangler","bin","wrangler.js");
 const port=8787;
-const base=`http://127.0.0.1:${port}`;
+const base=`http://localhost:${port}`;
 const secret=process.env.BOOTSTRAP_SECRET;
 if(!secret||secret.length<32)throw new Error("CI must provide a test-only BOOTSTRAP_SECRET");
 const child=spawn(process.execPath,[wrangler,"dev","--local","--ip","127.0.0.1","--port",String(port)],{cwd:root,env:process.env,stdio:["ignore","pipe","pipe"]});
@@ -42,17 +42,33 @@ try {
   browser=await chromium.launch({headless:true});
   const page=await browser.newPage({viewport:{width:1280,height:900}});
   const pageErrors=[];page.on("pageerror",error=>pageErrors.push(error.message));
+  const browserDiagnostics=[];
+  page.on("console",message=>browserDiagnostics.push("console:"+message.type()+":"+message.text()));
+  page.on("requestfailed",request=>browserDiagnostics.push("requestfailed:"+request.url()+":"+request.failure()?.errorText));
+  page.on("response",response=>{if(response.url().includes("/api/v1/auth/passkey/"))browserDiagnostics.push("response:"+response.status()+":"+response.url());});
+  const cdp=await page.context().newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator",{options:{protocol:"ctap2",transport:"internal",hasResidentKey:true,hasUserVerification:true,isUserVerified:true}});
   await page.goto(base+"/");
   await page.locator("#bootstrapForm").waitFor({state:"visible"});
   await page.locator('input[name="bootstrap_secret"]').fill(secret);
   await page.locator('#bootstrapForm input[name="display_name"]').fill("مدیر آزمایش");
   await page.locator('#bootstrapForm input[name="username"]').fill("admin");
   await page.locator('#bootstrapForm input[name="email"]').fill("admin@example.com");
-  await page.locator('#bootstrapForm input[name="password"]').fill(password);
   await page.locator("#bootstrapForm button[type=submit]").click();
-  await page.locator("#appPanel").waitFor({state:"visible"});
+  await page.waitForFunction(() => {
+    const app=document.querySelector("#appPanel"),notice=document.querySelector("#notice");
+    return (app&&!app.classList.contains("hidden")) || (notice&&notice.classList.contains("error"));
+  },null,{timeout:30000});
+  if(await page.locator("#appPanel").isHidden()) throw new Error("Passkey bootstrap failed: "+await page.locator("#notice").innerText()+"\\nBrowser diagnostics: "+browserDiagnostics.join(" | ")+"\\nPage errors: "+pageErrors.join(" | ")+"\\nWorker output: "+output);
+
   assert.equal(await page.locator("html").getAttribute("dir"),"rtl");
   assert.equal(await page.locator("html").getAttribute("lang"),"fa");
+  await page.locator("#logoutButton").click();
+  await page.locator("#loginForm").waitFor({state:"visible"});
+  await page.locator('#loginForm input[name="identifier"]').fill("admin");
+  await page.locator("#passkeyLoginButton").click();
+  await page.locator("#appPanel").waitFor({state:"visible"});
   await page.locator("#unitForm input[name=code]").fill("ACME");
   await page.locator("#unitForm input[name=name]").fill("شرکت نمونه");
   await page.locator("#unitForm select[name=unit_type]").selectOption("company");
@@ -126,12 +142,10 @@ try {
   ));
   assert.equal(secondBootstrap.response.status,409);
 
-  const wrong=await api("/api/v1/auth/login",post({username:"admin",password:"wrong-password-123"}));
-  assert.equal(wrong.response.status,401);
-  const login=await api("/api/v1/auth/login",post({username:"admin",password}));
-  assert.equal(login.response.status,200);
-  const cookie=login.response.headers.get("set-cookie")?.split(";")[0];
-  assert.ok(cookie&&cookie.startsWith("erp_session="));
+  const browserCookies=await page.context().cookies(base+"/api/");
+  const sessionCookie=browserCookies.find(item=>item.name==="erp_session");
+  const cookie=sessionCookie?sessionCookie.name+"="+sessionCookie.value:"";
+  assert.ok(cookie&&cookie.startsWith("erp_session="),"Passkey login should issue a session cookie");
   const me=await api("/api/v1/auth/me",{headers:{cookie}});
   assert.deepEqual(me.body.data.roles,["admin"]);
   const listed=await api("/api/v1/org-units",{headers:{cookie}});
@@ -155,18 +169,26 @@ try {
   assert.equal((await api("/api/v1/org-units/"+listed.body.data.find(unit=>unit.code==="SITEB").id,{...post({name:"تغییر خارج از محدوده"}),method:"PATCH",headers:{cookie:managerCookie,"content-type":"application/json"}})).response.status,403);
   assert.equal((await api("/api/v1/users",{headers:{cookie:managerCookie}})).response.status,403);
 
-  await api("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
-  assert.equal((await api("/api/v1/auth/me",{headers:{cookie}})).response.status,401);
   const managerRow=page.locator("#usersTable tr").filter({hasText:"manager@example.com"});
   await managerRow.locator('button[data-action="user-status"]').click();
-  await managerRow.locator("td").nth(5).getByText("غیرفعال").waitFor();
+  const usersAfterDeactivation=await api("/api/v1/users",{headers:{cookie}});
+  assert.equal(usersAfterDeactivation.body.data.find(item=>item.email==="manager@example.com")?.status,"disabled");
   assert.equal((await api("/api/v1/auth/me",{headers:{cookie:managerCookie}})).response.status,401);
+  await api("/api/v1/auth/logout",{method:"POST",headers:{cookie}});
+  assert.equal((await api("/api/v1/auth/me",{headers:{cookie}})).response.status,401);
 
   await page.locator("#logoutButton").click();
   await page.locator("#loginForm").waitFor({state:"visible"});
+  // The first administrator is Passkey-only: the server deliberately stores a
+  // non-password placeholder hash. A password login must fail closed and keep
+  // the protected application panel hidden.
   await page.locator('#loginForm input[name="identifier"]').fill("admin");
   await page.locator('#loginForm input[name="password"]').fill(password);
   await page.locator("#loginForm button[type=submit]").click();
+  await page.waitForFunction(() => document.querySelector("#notice")?.classList.contains("error"));
+  assert.equal(await page.locator("#appPanel").isHidden(), true, "invalid password must not reveal the application panel");
+  // The valid login path for this Passkey-only account is browser WebAuthn.
+  await page.locator("#passkeyLoginButton").click();
   await page.locator("#appPanel").waitFor({state:"visible"});
   await page.locator("#auditPanel").waitFor({state:"visible"});
   const auditProbe=await page.evaluate(async()=>{const response=await fetch("/api/v1/audit-events?limit=50&offset=0");return {status:response.status,body:await response.json()};});

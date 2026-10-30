@@ -33,6 +33,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
       - name: Check JavaScript syntax
         run: npm run check
       - name: Run Worker and D1 schema unit tests
@@ -46,6 +48,12 @@ jobs:
       - name: Exercise Worker on local Cloudflare runtime
         env:
           BOOTSTRAP_SECRET: ci-only-bootstrap-secret-for-local-runtime
+          WEBAUTHN_RP_ID: localhost
+          WEBAUTHN_ORIGIN: http://localhost:8787
         run: |
-          printf 'BOOTSTRAP_SECRET=%s\n' "$BOOTSTRAP_SECRET" > .dev.vars
+          cat > .dev.vars <<EOF
+          BOOTSTRAP_SECRET=$BOOTSTRAP_SECRET
+          WEBAUTHN_RP_ID=$WEBAUTHN_RP_ID
+          WEBAUTHN_ORIGIN=$WEBAUTHN_ORIGIN
+          EOF
           node tests/worker-runtime-smoke.mjs
