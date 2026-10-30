@@ -215,7 +215,8 @@ try {
   await page.locator('#hrTimeEventForm select[name="event_type"]').selectOption("clock_out");
   await page.locator('#hrTimeEventForm input[name="occurred_at"]').fill("2026-10-30T16:00");
   await page.locator("#hrTimeEventForm button[type=submit]").click();
-  await page.locator("#hrTimeEventsTable tr").filter({hasText:"خروج"}).waitFor();
+  try { await page.locator("#hrTimeEventsTable tr").filter({hasText:"خروج"}).waitFor({timeout:10000}); }
+  catch { throw new Error("Clock-out event did not appear in UI: "+await page.locator("#notice").textContent()); }
   await page.locator('#hrLeaveForm select[name="employee_id"]').selectOption({label:"EMP-UI-001 — کارمند آزمایش منابع انسانی"});
   await page.locator('#hrLeaveForm input[name="leave_type"]').fill("استحقاقی");
   await page.locator('#hrLeaveForm input[name="start_date"]').fill("2026-11-02");
