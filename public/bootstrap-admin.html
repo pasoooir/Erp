@@ -30,13 +30,13 @@
         <small>مقدار فعلی متغیر محرمانه BOOTSTRAP_SECRET در Cloudflare Worker؛ این مقدار را در GitHub قرار ندهید.</small>
       </label>
       <label>نام کاربری
-        <input name="username" value="hamed" minlength="3" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9._\\x2d]{2,63}" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        <input name="username" minlength="3" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9._\\x2d]{2,63}" autocomplete="username" autocapitalize="none" spellcheck="false" required>
       </label>
       <label>ایمیل مدیر
-        <input name="email" type="email" value="Hamed_bk83@yahoo.com" maxlength="254" autocomplete="email" required>
+        <input name="email" type="email" maxlength="254" autocomplete="email" required>
       </label>
       <label>نام نمایشی
-        <input name="display_name" value="مدیر سامانه" maxlength="120" autocomplete="name" required>
+        <input name="display_name" maxlength="120" autocomplete="name" required>
       </label>
       <button id="submitButton" type="submit">ثبت Passkey و ایجاد مدیر</button>
     </form>
