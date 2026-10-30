@@ -135,7 +135,7 @@ jobs:
             });
           '
       - name: Verify preview CORS allow/deny behavior
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'test/cloudflare-preview-smoke-and-tracker'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'test/cloudflare-preview-safe-d1-config'
         env:
           PREVIEW_API: https://fix-cloudflare-preview-safe-d1-config-erp-api.pasoooir-erp.workers.dev
         run: |
@@ -150,3 +150,55 @@ jobs:
             -H 'Origin: https://attacker.example' "$PREVIEW_API/api/health")"
           test "$denied" = "403"
           echo "Preview CORS allow/deny checks passed."
+  published-pages-browser-smoke:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'test/cloudflare-preview-smoke-and-tracker'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Verify the published login and conditional bootstrap forms
+        env:
+          PAGES_BASE: https://pasoooir.github.io/Erp/
+          API_BASE: https://erp-api.pasoooir-erp.workers.dev
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from "playwright";
+          const statusResponse = await fetch(API_BASE + "/api/v1/auth/status");
+          if (!statusResponse.ok) throw new Error("Live auth status endpoint failed: " + statusResponse.status);
+          const statusPayload = await statusResponse.json();
+          if (typeof statusPayload?.data?.bootstrap_required !== "boolean") {
+            throw new Error("Live auth status payload is invalid");
+          }
+          const bootstrapRequired = statusPayload.data.bootstrap_required;
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+          const pageErrors = [];
+          page.on("pageerror", error => pageErrors.push(error.message));
+          try {
+            await page.goto(PAGES_BASE, { waitUntil: "networkidle", timeout: 30000 });
+            await page.locator("#authPanel").waitFor({ state: "visible", timeout: 15000 });
+            await page.locator("#loginForm").waitFor({ state: "visible" });
+            await page.locator("#bootstrapForm").waitFor({ state: "hidden" });
+            await page.locator('input[name="identifier"]').waitFor({ state: "visible" });
+            await page.locator('input[name="password"]').waitFor({ state: "visible" });
+            await page.goto(PAGES_BASE + "?setup=1", { waitUntil: "networkidle", timeout: 30000 });
+            if (bootstrapRequired) {
+              await page.locator("#bootstrapForm").waitFor({ state: "visible" });
+              await page.locator("#loginForm").waitFor({ state: "hidden" });
+            } else {
+              await page.locator("#bootstrapForm").waitFor({ state: "hidden" });
+              await page.locator("#loginForm").waitFor({ state: "visible" });
+            }
+            if (pageErrors.length) throw new Error("Browser errors: " + pageErrors.join("; "));
+            console.log("Published Pages login form passed; setup route behavior matched bootstrap_required=" + bootstrapRequired);
+          } finally {
+            await browser.close();
+          }
+          NODE
