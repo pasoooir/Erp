@@ -7,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import worker from "../src/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql","0003_auth_username.sql","0004_hr_personnel.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
+const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql","0003_auth_username.sql","0004_hr_personnel.sql","0005_hr_time.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
 class Statement {
   constructor(db, sql, values = []) { this.db=db; this.sql=sql; this.values=values; }
   bind(...values) { return new Statement(this.db, this.sql, values); }
