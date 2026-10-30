@@ -25,7 +25,7 @@ const frontend=createServer(async(req,res)=>{
       const responseHeaders=Object.fromEntries(upstream.headers.entries());
       res.writeHead(upstream.status,responseHeaders);res.end(Buffer.from(await upstream.arrayBuffer()));return;
     }
-    const relative=decodeURIComponent(pathname==="/"?"/index.html":pathname).replace(/^\\/+ /,"");
+    const relative=decodeURIComponent(pathname==="/"?"/index.html":pathname).replace(/^\\/+/, "");
     const file=path.resolve(publicRoot,"."+relative);
     if(file!==publicRoot&&!file.startsWith(publicRoot+path.sep)){res.writeHead(403);res.end("Forbidden");return;}
     const data=await readFile(file);
