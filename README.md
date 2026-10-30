@@ -128,3 +128,14 @@
 - **عدم استفاده از Cloudflare Pages:** فایل‌های Wrangler دیگر `assets` یا تنظیمات `previews` مخصوص Pages ندارند. برای انتشار رابط کاربری فقط GitHub Pages را استفاده کن.
 
 برای انتشار Frontend، GitHub Actions باید از شاخه `main` پوشه `public/` را منتشر کند. برای Backend، انتشار Worker یک عملیات مستقل است و نباید در workflow مربوط به GitHub Pages ادغام شود. هرگونه انتشار production یا migration دیتابیس زنده همچنان نیازمند تأیید صریح مالک سامانه است.
+
+
+## وضعیت جاری ماژول منابع انسانی — 2026-10-30
+
+- **پرونده کارکنان و قراردادها:** پیاده‌سازی در [PR #20](https://github.com/pasoooir/Erp/pull/20)؛ APIهای scope-aware، migration `0004_hr_personnel.sql`، UI فارسی RTL و آزمون‌های Worker/Chromium. CI foundation و live API smoke برای commit جاری این PR موفق‌اند؛ PR هنوز ادغام نشده است.
+- **حضور و غیاب و مرخصی:** پیاده‌سازی در [PR #21](https://github.com/pasoooir/Erp/pull/21)، stacked روی PR #20؛ migration `0005_hr_time.sql`، رویدادهای خام ورود/خروج با idempotency و state transition اتمی، درخواست مرخصی با جلوگیری از overlap در سطح D1، audit و رابط RTL.
+- **اعتبارسنجی HR-TIME:** آزمون‌های Node/SQLite و migration در foundation CI روی آخرین commit اجرا شده‌اند؛ اجرای Chromium/Worker runtime برای آخرین commit هنوز در حال تکمیل است. تا سبز شدن همه مراحل، این برش تکمیل‌شده اعلام نمی‌شود.
+- **مرزهای سیاستی:** محاسبه شیفت، تعطیلات، گردکردن، اضافه‌کاری، کسری کار، مانده مرخصی و Payroll پیاده‌سازی نشده‌اند؛ به سیاست مصوب سازمان نیاز دارند.
+- **کارهای بعدی:** جذب/آموزش/ارزیابی (HR-TAL) و حقوق و دستمزد (HR-PAY) هنوز شروع نشده‌اند. HR-PAY تا تعیین قواعد مالی/قانونی و دسترسی محرمانه نباید با فرضیات ساخته شود.
+
+جزئیات شواهد، وضعیت‌ها و وابستگی PRها در [دفتر اجرای پروژه](./docs/PROJECT_EXECUTION_TRACKER.md) ثبت می‌شود. PRهای #20 و #21 باز هستند؛ هیچ‌کدام به `main` ادغام نشده‌اند. هیچ remote D1 migration یا Production deployment انجام نشده است.
