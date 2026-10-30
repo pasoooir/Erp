@@ -66,11 +66,6 @@ export function initializePersonnelModule({ api, notice, getUser }) {
       const response = await api("/api/v1/hr/employees?limit=100&offset=0", {}, true);
       employees = response.data || [];
       renderEmployees();
-      const employeeSelect = contractForm.elements.employee_id;
-      const current = employeeSelect.value;
-      employeeSelect.replaceChildren();
-      employees.forEach(employee => employeeSelect.add(new Option(employee.employee_no + " — " + employee.display_name, employee.id)));
-      if (employees.some(employee => employee.id === current)) employeeSelect.value = current;
     } catch (error) {
       $("hrEmployeesLoading").classList.add("hidden");
       notice(error.message, "error");
@@ -103,7 +98,6 @@ export function initializePersonnelModule({ api, notice, getUser }) {
     $("hrContractsPanel").classList.remove("hidden");
     $("hrSelectedEmployee").textContent = employee.employee_no + " — " + employee.display_name;
     contractForm.elements.employee_id.value = employee.id;
-    contractForm.elements.employee_id.disabled = true;
     await loadContracts(employee.id);
   }
 
