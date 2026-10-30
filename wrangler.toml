@@ -2,7 +2,10 @@ name = "erp-api"
 main = "src/index.js"
 compatibility_date = "2026-10-28"
 compatibility_flags = ["nodejs_compat"]
-workers_dev = true\n\n[limits]\ncpu_ms = 10
+workers_dev = true
+
+[limits]
+cpu_ms = 10
 
 [vars]
 APP_ORIGIN = "https://pasoooir.github.io"
