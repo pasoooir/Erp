@@ -131,3 +131,26 @@
 | ERP-HOSTING-ARCH-003 | پیکربندی Pages Assets/Preview از Worker جدا شود | `assets` و `previews` از `wrangler.toml` حذف شده‌اند؛ D1 binding و APP_ORIGIN باقی مانده‌اند | in_progress | بازبینی diff و اجرای CI؛ هیچ Worker production deploy یا D1 migration انجام نشده است |
 
 **مرز استقرار:** GitHub Pages برای رابط کاربری؛ Cloudflare Workers برای API؛ Cloudflare D1 فقط پشت Worker. Cloudflare Pages در مسیر انتشار این پروژه استفاده نمی‌شود.
+
+
+## بازبینی شواهد استقرار و احراز هویت — 2026-10-30
+
+این بخش مرجع وضعیت جدیدتر است و موارد متناقض/قدیمی‌تر در بخش‌های قبل را برای وضعیت جاری اصلاح می‌کند.
+
+| شناسه | معیار پذیرش | شواهد تازه | وضعیت | اقدام بعدی |
+|---|---|---|---|---|
+| ERP-AUTH-UI-002 | نمایش فرم ورود در مسیر عادی و محدودکردن bootstrap به `?setup=1` هنگام نیاز | PR #16 در main ادغام شد؛ GitHub Pages deploy run `41024132999` موفق؛ live API smoke run `41024735521` موفق؛ تست مرورگر Worker در run `41024382213` هر دو حالت فرم را بررسی کرد | completed برای کد و smoke؛ ورود واقعی حساب مالک هنوز تأیید نشده | مالک سامانه مدیر اولیه را با secret خصوصی خودش یک‌بار ایجاد کند؛ رمز/secret در چت یا repo ثبت نشود |
+| ERP-RUNTIME-SMOKE-002 | اجرای مسیر استاتیک Pages و API proxy در تست runtime محلی بدون 404 یا پاسخ JSON خراب | PR #17 ادغام شد؛ run `41024382213` در همه مراحل از جمله Chromium و Worker runtime موفق | completed | قرارداد smoke در CI حفظ شود |
+| ERP-CF-PREVIEW-001 | Cloudflare Workers Builds preview بدون اتصال به D1 تولیدی | PR #18 شاخه `fix/cloudflare-preview-safe-d1-config`؛ commit `5dfd09c890f228eee6274cfcf6ce348acf8c32c1`; Cloudflare preview deployment `825a79da-c32f-4f69-ab24-ea6629877b95` با Build و Deployment موفق؛ D1 مجزا `erp-preview-passkey-e2e` شناسه `b108b011-6b3c-49cf-a7c2-7cae0b8b0416` و در زمان بررسی صفر جدول دارد | completed برای ایجاد preview و جداسازی binding؛ PR #18 هنوز باز است | اجرای smoke مستقل preview و سپس بازبینی PR؛ هیچ migration روی D1 preview یا production اجرا نشود |
+| ERP-CI-LIVE-API-002 | بررسی API عملیاتی، health، وضعیت bootstrap و CORS بدون تغییر داده | live API smoke run `41024735521` همه ۸ مرحله موفق؛ foundation run `41024735546` همه مراحل موفق | completed برای معیارهای smoke | ورود واقعی و CRUD فقط پس از ایجاد مدیر و تست مجاز مالک بررسی شود |
+
+### مرزهای تأیید و انتشار
+
+- PR #16 و PR #17 در main ادغام شده‌اند؛ PR #18 با وضعیت open است و ادغام نشده.
+- Pages deployment run `41024580427` و ERP foundation run روی main با شناسه `41024581296` موفق‌اند.
+- Cloudflare preview برای PR #18 با شناسه deployment بالا موفق است. یک build دستی تکراری که به‌دلیل trigger branch filter به trigger اصلی متصل نبود، لغو شد؛ این مورد deployment موفق PR را نقض نمی‌کند.
+- D1 preview در زمان بررسی خالی بود (`num_tables=0`)؛ هیچ migration روی آن اجرا نشده است. D1 تولیدی، secrets و deployment عملیاتی در این مرحله تغییر نکرده‌اند.
+- وضعیت ورود با حساب واقعی مالک: تأییدنشده؛ smoke testهای عمومی عمداً هیچ credential یا bootstrap secret واقعی را استفاده نمی‌کنند.
+- آخرین commit مبنای main در این بازبینی: `ec62e092179faa6a92290d5be82d587939aac54e`.
+
+**قاعده:** سبز بودن CI، موفقیت Preview یا انتشار Pages به‌تنهایی اثبات ورود واقعی، تکمیل ماژول‌های ERP یا صحت گردش‌های داده‌ای کارخانه نیست.
