@@ -23,10 +23,11 @@ const frontend=createServer(async(req,res)=>{
       const chunks=[];for await(const chunk of req)chunks.push(chunk);
       const upstream=await fetch(workerBase+pathname+new URL(req.url||"/",base).search,{method:req.method,headers,body:["GET","HEAD"].includes(req.method||"GET")?undefined:Buffer.concat(chunks),redirect:"manual"});
       const responseHeaders=Object.fromEntries(upstream.headers.entries());
+      for(const header of ["content-encoding","content-length","transfer-encoding","connection","keep-alive"])delete responseHeaders[header];
       res.writeHead(upstream.status,responseHeaders);res.end(Buffer.from(await upstream.arrayBuffer()));return;
     }
     const relative=decodeURIComponent(pathname==="/"?"/index.html":pathname).replace(/^\/+/, "");
-    const file=path.resolve(publicRoot,"."+relative);
+    const file=path.resolve(publicRoot,relative);
     if(file!==publicRoot&&!file.startsWith(publicRoot+path.sep)){res.writeHead(403);res.end("Forbidden");return;}
     const data=await readFile(file);
     res.writeHead(200,{"content-type":mimeTypes[path.extname(file)]||"application/octet-stream","cache-control":"no-store"});res.end(data);
@@ -190,6 +191,13 @@ try {
   assert.equal((await api("/api/v1/auth/me",{headers:{cookie:managerCookie}})).response.status,401);
 
   await page.locator("#logoutButton").click();
+  await page.locator("#loginForm").waitFor({state:"visible"});
+  await page.locator('#loginForm input[name="identifier"]').fill("admin");
+  await page.locator('#loginForm input[name="password"]').fill("wrong-password-123");
+  await page.locator("#loginForm button[type=submit]").click();
+  await page.locator("#notice.error").waitFor({state:"visible"});
+  assert.match(await page.locator("#notice").textContent(),/نادرست|ناموفق|معتبر/);
+  await page.locator("#appPanel").waitFor({state:"hidden"});
   await page.locator("#loginForm").waitFor({state:"visible"});
   await page.locator('#loginForm input[name="identifier"]').fill("admin");
   await page.locator('#loginForm input[name="password"]').fill(password);
