@@ -41,7 +41,11 @@ try {
 
   browser=await chromium.launch({headless:true});
   const page=await browser.newPage({viewport:{width:1280,height:900}});
-  const pageErrors=[];page.on("pageerror",error=>pageErrors.push(error.message));\n  const browserDiagnostics=[];\n  page.on("console",message=>browserDiagnostics.push("console:"+message.type()+":"+message.text()));\n  page.on("requestfailed",request=>browserDiagnostics.push("requestfailed:"+request.url()+":"+request.failure()?.errorText));\n  page.on("response",response=>{if(response.url().includes("/api/v1/auth/passkey/"))browserDiagnostics.push("response:"+response.status()+":"+response.url());});
+  const pageErrors=[];page.on("pageerror",error=>pageErrors.push(error.message));
+  const browserDiagnostics=[];
+  page.on("console",message=>browserDiagnostics.push("console:"+message.type()+":"+message.text()));
+  page.on("requestfailed",request=>browserDiagnostics.push("requestfailed:"+request.url()+":"+request.failure()?.errorText));
+  page.on("response",response=>{if(response.url().includes("/api/v1/auth/passkey/"))browserDiagnostics.push("response:"+response.status()+":"+response.url());});
   const cdp=await page.context().newCDPSession(page);
   await cdp.send("WebAuthn.enable");
   await cdp.send("WebAuthn.addVirtualAuthenticator",{options:{protocol:"ctap2",transport:"internal",hasResidentKey:true,hasUserVerification:true,isUserVerified:true}});
