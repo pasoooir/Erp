@@ -148,13 +148,13 @@ export function initializePersonnelModule({ api, notice, getUser }) {
   $("hrTimeEventForm").addEventListener("submit",async event=>{
     event.preventDefault();const form=event.currentTarget,button=form.querySelector("button[type=submit]");button.disabled=true;
     const data=formValues(form);data.occurred_at=new Date(data.occurred_at).toISOString();data.idempotency_key=crypto.randomUUID();
-    try{await api("/api/v1/hr/time-events",{method:"POST",body:JSON.stringify(data)});form.reset();notice("رویداد تردد ثبت و ممیزی شد.","success");await loadTimeAndLeave();}
+    try{await api("/api/v1/hr/time-events",{method:"POST",body:JSON.stringify(data)});form.reset();form.elements.employee_id.value=data.employee_id;notice("رویداد تردد ثبت و ممیزی شد.","success");await loadTimeAndLeave();}
     catch(error){notice(error.message,"error");}finally{button.disabled=false;}
   });
   $("hrLeaveForm").addEventListener("submit",async event=>{
     event.preventDefault();const form=event.currentTarget,button=form.querySelector("button[type=submit]");button.disabled=true;
     const data=formValues(form);
-    try{await api("/api/v1/hr/leave-requests",{method:"POST",body:JSON.stringify(data)});form.reset();notice("درخواست مرخصی ثبت شد.","success");await loadTimeAndLeave();}
+    try{await api("/api/v1/hr/leave-requests",{method:"POST",body:JSON.stringify(data)});form.reset();form.elements.employee_id.value=data.employee_id;notice("درخواست مرخصی ثبت شد.","success");await loadTimeAndLeave();}
     catch(error){notice(error.message,"error");}finally{button.disabled=false;}
   });
   $("hrLeaveTable").addEventListener("click",async event=>{
