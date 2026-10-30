@@ -56,7 +56,7 @@ try {
     const app=document.querySelector("#appPanel"),notice=document.querySelector("#notice");
     return (app&&!app.classList.contains("hidden")) || (notice&&notice.classList.contains("error"));
   },null,{timeout:30000});
-  if(await page.locator("#appPanel").isHidden()) throw new Error("Passkey bootstrap failed: "+await page.locator("#notice").innerText());
+  if(await page.locator("#appPanel").isHidden()) throw new Error("Passkey bootstrap failed: "+await page.locator("#notice").innerText()+"\\nWorker output: "+output);
 
   assert.equal(await page.locator("html").getAttribute("dir"),"rtl");
   assert.equal(await page.locator("html").getAttribute("lang"),"fa");
