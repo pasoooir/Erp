@@ -23,10 +23,14 @@ const frontend=createServer(async(req,res)=>{
       const chunks=[];for await(const chunk of req)chunks.push(chunk);
       const upstream=await fetch(workerBase+pathname+new URL(req.url||"/",base).search,{method:req.method,headers,body:["GET","HEAD"].includes(req.method||"GET")?undefined:Buffer.concat(chunks),redirect:"manual"});
       const responseHeaders=Object.fromEntries(upstream.headers.entries());
-      res.writeHead(upstream.status,responseHeaders);res.end(Buffer.from(await upstream.arrayBuffer()));return;
+      // fetch() may transparently decompress the upstream body; forwarding stale
+      // transport headers can make the local browser/client reject valid JSON.
+      for(const name of ["content-encoding","content-length","transfer-encoding","connection","keep-alive"])delete responseHeaders[name];
+      const responseBody=Buffer.from(await upstream.arrayBuffer());
+      res.writeHead(upstream.status,responseHeaders);res.end(responseBody);return;
     }
     const relative=decodeURIComponent(pathname==="/"?"/index.html":pathname).replace(/^\/+/, "");
-    const file=path.resolve(publicRoot,"."+relative);
+    const file=path.resolve(publicRoot,relative);
     if(file!==publicRoot&&!file.startsWith(publicRoot+path.sep)){res.writeHead(403);res.end("Forbidden");return;}
     const data=await readFile(file);
     res.writeHead(200,{"content-type":mimeTypes[path.extname(file)]||"application/octet-stream","cache-control":"no-store"});res.end(data);
@@ -50,7 +54,7 @@ async function waitForServer() {
 async function api(pathname,options={}) {
   const response=await fetch(base+pathname,options);
   let body;
-  try{body=await response.json()}catch{throw new Error("Non-JSON response for "+pathname+": "+response.status)}
+  try{body=await response.json()}catch{const raw=await response.text().catch(()=>"<unreadable>");throw new Error("Non-JSON response for "+pathname+": "+response.status+" "+raw.slice(0,300))}
   return {response,body};
 }
 const post=(data,headers={})=>({method:"POST",headers:{"content-type":"application/json",...headers},body:JSON.stringify(data)});
@@ -70,6 +74,9 @@ try {
   const page=await browser.newPage({viewport:{width:1280,height:900}});
   const pageErrors=[];page.on("pageerror",error=>pageErrors.push(error.message));
   await page.goto(base+"/");
+  await page.locator("#loginForm").waitFor({state:"visible"});
+  await page.locator("#bootstrapForm").waitFor({state:"hidden"});
+  await page.goto(base+"/?setup=1");
   await page.locator("#bootstrapForm").waitFor({state:"visible"});
   await page.locator('input[name="bootstrap_secret"]').fill(secret);
   await page.locator('#bootstrapForm input[name="display_name"]').fill("مدیر آزمایش");
