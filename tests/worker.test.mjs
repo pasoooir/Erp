@@ -407,3 +407,25 @@ test("passkey schema and bootstrap boundary are installed without touching produ
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM users").get().n,0);
   assert.equal((await call("/api/v1/auth/passkeys/register/options",json({}))).status,401);
 });
+
+test("passkey bootstrap issues a short-lived single-use challenge and rejects replay", async () => {
+  const {call,DB}=harness();
+  const headers={"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"};
+  const options=await call("/api/v1/auth/passkey/bootstrap/options",{
+    ...json({username:"firstadmin",email:"first@example.com",display_name:"First Admin"}),headers
+  });
+  assert.equal(options.status,200);
+  const challenge=(await parse(options)).data.challenge;
+  assert.ok(challenge);
+  assert.equal(DB.sqlite.prepare("SELECT purpose FROM auth_challenges WHERE challenge=?").get(challenge).purpose,"bootstrap");
+  const invalid=await call("/api/v1/auth/passkey/bootstrap/verify",{
+    ...json({challenge,response:{}}),headers
+  });
+  assert.equal(invalid.status,400);
+  const replay=await call("/api/v1/auth/passkey/bootstrap/verify",{
+    ...json({challenge,response:{}}),headers
+  });
+  assert.equal(replay.status,400);
+  assert.equal((await parse(replay)).error.code,"challenge_expired");
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM users").get().n,0);
+});
