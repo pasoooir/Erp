@@ -1,13 +1,37 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import path from "node:path";
+import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const wrangler=path.join(root,"node_modules","wrangler","bin","wrangler.js");
 const port=8787;
-const base=`http://127.0.0.1:${port}`;
+const frontendPort=8788;
+const workerBase=`http://127.0.0.1:${port}`;
+const base=`http://127.0.0.1:${frontendPort}`;
+const publicRoot=path.join(root,"public");
+const mimeTypes={".html":"text/html; charset=utf-8",".css":"text/css; charset=utf-8",".js":"text/javascript; charset=utf-8",".json":"application/json; charset=utf-8",".svg":"image/svg+xml",".png":"image/png",".ico":"image/x-icon"};
+const frontend=createServer(async(req,res)=>{
+  try {
+    const pathname=new URL(req.url||"/",base).pathname;
+    if(pathname.startsWith("/api/")){
+      const headers={...req.headers};
+      delete headers.host;delete headers.origin;delete headers.referer;
+      const chunks=[];for await(const chunk of req)chunks.push(chunk);
+      const upstream=await fetch(workerBase+pathname+new URL(req.url||"/",base).search,{method:req.method,headers,body:["GET","HEAD"].includes(req.method||"GET")?undefined:Buffer.concat(chunks),redirect:"manual"});
+      const responseHeaders=Object.fromEntries(upstream.headers.entries());
+      res.writeHead(upstream.status,responseHeaders);res.end(Buffer.from(await upstream.arrayBuffer()));return;
+    }
+    const relative=decodeURIComponent(pathname==="/"?"/index.html":pathname).replace(/^\/+/, "");
+    const file=path.resolve(publicRoot,"."+relative);
+    if(file!==publicRoot&&!file.startsWith(publicRoot+path.sep)){res.writeHead(403);res.end("Forbidden");return;}
+    const data=await readFile(file);
+    res.writeHead(200,{"content-type":mimeTypes[path.extname(file)]||"application/octet-stream","cache-control":"no-store"});res.end(data);
+  } catch(error) {res.writeHead(404,{"content-type":"text/plain; charset=utf-8"});res.end("Not found: "+String(error.message||error));}
+});
 const secret=process.env.BOOTSTRAP_SECRET;
 if(!secret||secret.length<32)throw new Error("CI must provide a test-only BOOTSTRAP_SECRET");
 const child=spawn(process.execPath,[wrangler,"dev","--local","--ip","127.0.0.1","--port",String(port)],{cwd:root,env:process.env,stdio:["ignore","pipe","pipe"]});
@@ -18,7 +42,7 @@ async function waitForServer() {
   const deadline=Date.now()+45_000;
   while(Date.now()<deadline) {
     if(child.exitCode!==null)throw new Error("Wrangler exited before readiness: "+output);
-    try { const response=await fetch(base+"/api/health"); if(response.ok)return; } catch {}
+    try { const response=await fetch(workerBase+"/api/health"); if(response.ok)return; } catch {}
     await new Promise(resolve=>setTimeout(resolve,250));
   }
   throw new Error("Wrangler did not become ready: "+output);
@@ -34,6 +58,9 @@ const password="long-ci-password-123";
 let browser;
 try {
   await waitForServer();
+  await new Promise((resolve,reject)=>{frontend.once("error",reject);frontend.listen(frontendPort,"127.0.0.1",resolve);});
+  const frontendResponse=await fetch(base+"/");
+  assert.equal(frontendResponse.status,200,"local smoke host must serve GitHub Pages public/ frontend");
   const health=await api("/api/health");
   assert.equal(health.body.data.database,"connected");
   const status=await api("/api/v1/auth/status");
@@ -182,6 +209,7 @@ try {
   process.exitCode=1;
 } finally {
   await browser?.close();
+  frontend.close();
   child.kill("SIGTERM");
   await new Promise(resolve=>{if(child.exitCode!==null||child.signalCode!==null)return resolve();child.once("exit",resolve);setTimeout(()=>{child.kill("SIGKILL");resolve()},3000).unref();});
 }
