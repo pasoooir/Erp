@@ -23,6 +23,7 @@ const frontend=createServer(async(req,res)=>{
       const chunks=[];for await(const chunk of req)chunks.push(chunk);
       const upstream=await fetch(workerBase+pathname+new URL(req.url||"/",base).search,{method:req.method,headers,body:["GET","HEAD"].includes(req.method||"GET")?undefined:Buffer.concat(chunks),redirect:"manual"});
       const responseHeaders=Object.fromEntries(upstream.headers.entries());
+      for(const header of ["content-encoding","content-length","transfer-encoding","connection","keep-alive"])delete responseHeaders[header];
       res.writeHead(upstream.status,responseHeaders);res.end(Buffer.from(await upstream.arrayBuffer()));return;
     }
     const relative=decodeURIComponent(pathname==="/"?"/index.html":pathname).replace(/^\/+/, "");
