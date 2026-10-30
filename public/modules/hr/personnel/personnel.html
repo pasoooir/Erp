@@ -1,0 +1,37 @@
+<section id="hrPersonnelPanel" class="panel hidden" aria-labelledby="hrPersonnelTitle">
+  <div class="section-heading">
+    <div><p class="eyebrow">منابع انسانی · پرونده پرسنلی</p><h2 id="hrPersonnelTitle">کارکنان و قراردادهای استخدامی</h2><p>اطلاعات پایه کارکنان در محدوده سازمانی مجاز؛ بدون اطلاعات حقوق، بانکی یا شناسه‌های حساس.</p></div>
+    <span id="hrEmployeeCount" class="count">۰</span>
+  </div>
+  <form id="hrEmployeeForm" class="form hr-form">
+    <label>شماره پرسنلی<input name="employee_no" minlength="2" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9._-]{1,31}" required></label>
+    <label>نام و نام خانوادگی<input name="display_name" maxlength="120" required></label>
+    <label>ایمیل سازمانی<input name="work_email" type="email" maxlength="254"></label>
+    <label>واحد سازمانی<select name="org_unit_id" required><option value="">انتخاب واحد</option></select></label>
+    <label>سمت سازمانی<select name="position_unit_id"><option value="">بدون سمت</option></select></label>
+    <label>تاریخ استخدام<input name="hired_on" type="date" required></label>
+    <button class="button" type="submit">ثبت پرونده پرسنلی</button>
+  </form>
+  <div id="hrEmployeesLoading" class="empty hidden">در حال بارگذاری پرونده‌ها…</div>
+  <div id="hrEmployeesEmpty" class="empty hidden">پرونده‌ای در محدوده دسترسی شما ثبت نشده است.</div>
+  <div class="table-wrap">
+    <table><thead><tr><th>شماره پرسنلی</th><th>نام</th><th>واحد</th><th>سمت</th><th>وضعیت</th><th>استخدام</th><th>قراردادها</th><th>عملیات</th></tr></thead><tbody id="hrEmployeesTable"></tbody></table>
+  </div>
+  <section id="hrContractsPanel" class="hr-contracts-panel hidden" aria-labelledby="hrContractsTitle">
+    <div class="section-heading"><div><p class="eyebrow">پرونده استخدامی</p><h3 id="hrContractsTitle">قراردادهای کارمند</h3><p id="hrSelectedEmployee"></p></div></div>
+    <form id="hrContractForm" class="form hr-form">
+      <input type="hidden" name="employee_id">
+      <label>شماره قرارداد<input name="contract_no" minlength="2" maxlength="40" pattern="[A-Za-z0-9][A-Za-z0-9._/-]{1,39}" required></label>
+      <label>نوع قرارداد<input name="contract_type" minlength="2" maxlength="40" placeholder="مثلاً مدت‌معین" required></label>
+      <label>تاریخ شروع<input name="start_date" type="date" required></label>
+      <label>تاریخ پایان<input name="end_date" type="date"></label>
+      <label>تاریخ امضا<input name="signed_on" type="date"></label>
+      <label>وضعیت<select name="status"><option value="draft">پیش‌نویس</option><option value="active">فعال</option><option value="expired">منقضی</option><option value="terminated">خاتمه‌یافته</option></select></label>
+      <button class="button" type="submit">ثبت قرارداد</button>
+    </form>
+    <div id="hrContractsEmpty" class="empty hidden">برای این کارمند قراردادی ثبت نشده است.</div>
+    <div class="table-wrap">
+      <table><thead><tr><th>شماره قرارداد</th><th>نوع</th><th>شروع</th><th>پایان</th><th>امضا</th><th>وضعیت</th></tr></thead><tbody id="hrContractsTable"></tbody></table>
+    </div>
+  </section>
+</section>

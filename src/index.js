@@ -1,4 +1,5 @@
 import { authenticateWithPassword } from "./modules/auth/login/login-handler.js";
+import { handleHrRequest } from "./modules/hr/personnel/personnel-handler.js";
 const SESSION_SECONDS = 12 * 60 * 60;
 const PASSWORD_ITERATIONS = 310_000;
 const COOKIE_NAME = "erp_session";
@@ -464,6 +465,8 @@ async function route(request, env) {
     if (!user) return fail(401, "unauthenticated", "برای ادامه وارد سامانه شو.");
     return json({ data: user });
   }
+  const hrResponse = await handleHrRequest(request, env, user, { readJson, fail, json, audit, hasPermission });
+  if (hrResponse) return hrResponse;
   if (url.pathname === "/api/v1/org-units" && method === "GET") {
     if (!user) return fail(401, "unauthenticated", "برای مشاهده ساختار سازمانی وارد سامانه شو.");
     const result = user.roles.includes("admin")

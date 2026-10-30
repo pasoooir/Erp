@@ -128,3 +128,8 @@
 - **عدم استفاده از Cloudflare Pages:** فایل‌های Wrangler دیگر `assets` یا تنظیمات `previews` مخصوص Pages ندارند. برای انتشار رابط کاربری فقط GitHub Pages را استفاده کن.
 
 برای انتشار Frontend، GitHub Actions باید از شاخه `main` پوشه `public/` را منتشر کند. برای Backend، انتشار Worker یک عملیات مستقل است و نباید در workflow مربوط به GitHub Pages ادغام شود. هرگونه انتشار production یا migration دیتابیس زنده همچنان نیازمند تأیید صریح مالک سامانه است.
+
+
+## ماژول منابع انسانی — برش در حال توسعه
+
+برش اولیه پرونده کارکنان و قراردادها در شاخه مستقل `feature/hr-personnel-contracts` پیاده‌سازی شده است: Migration `0004_hr_personnel.sql`، APIهای scope-aware، رابط فارسی RTL و آزمون‌های API/Chromium. دامنه و محدودیت داده‌ها در [docs/HR_PERSONNEL.md](./docs/HR_PERSONNEL.md) آمده است. این تغییر هنوز در PR و CI در حال بررسی است و تا موفقیت معیارهای پذیرش، تکمیل‌شده محسوب نمی‌شود. حقوق و دستمزد، حضور و غیاب و داده‌های حساس پرسنلی در این برش پیاده‌سازی نشده‌اند.

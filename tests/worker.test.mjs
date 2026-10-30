@@ -7,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import worker from "../src/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql","0003_auth_username.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
+const migrations = ["0001_erp_foundation.sql","0002_scoped_rbac.sql","0003_auth_username.sql","0004_hr_personnel.sql"].map(file => fs.readFileSync(path.join(root, "migrations", file), "utf8"));
 class Statement {
   constructor(db, sql, values = []) { this.db=db; this.sql=sql; this.values=values; }
   bind(...values) { return new Statement(this.db, this.sql, values); }
@@ -394,4 +394,104 @@ test("admin can update user roles and scopes with audit and guardrails", async (
   assert.equal((await call("/api/v1/users/"+target.id,{...json({roles:["reader"],scope_ids:[]}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}})).status,400);
   assert.equal((await call("/api/v1/users/"+(await parse(bootstrap)).data.id,{...json({roles:["reader"],scope_ids:[companyId]}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}})).status,409);
   assert.equal((await call("/api/v1/users/"+target.id,{...json({roles:["reader"],scope_ids:[companyId]}),method:"PATCH"})).status,401);
+});
+
+
+test("HR employee and contract APIs enforce organization scope, validation, and audit", async () => {
+  const {call,DB}=harness();
+  const bootstrap=await call("/api/v1/auth/bootstrap",{
+    ...json({email:"hr-admin@example.com",display_name:"HR Admin",password:"strong-password-123"}),
+    headers:{"content-type":"application/json","x-bootstrap-secret":"test-bootstrap-secret-that-is-long-enough-32"}
+  });
+  assert.equal(bootstrap.status,201);
+  const adminCookie=cookieFrom(bootstrap);
+  async function createUnit(code,name,unit_type,parent_id=null){
+    const response=await call("/api/v1/org-units",{...json({code,name,unit_type,parent_id}),headers:{"content-type":"application/json",cookie:adminCookie}});
+    assert.equal(response.status,201);
+    return (await parse(response)).data;
+  }
+  const company=await createUnit("HRCOMP","شرکت منابع انسانی","company");
+  const site=await createUnit("HRSITE","کارخانه منابع انسانی","site",company.id);
+  const departmentA=await createUnit("HRDEPA","واحد مونتاژ","department",site.id);
+  const departmentB=await createUnit("HRDEPB","واحد رنگ","department",site.id);
+  const positionA=await createUnit("HRPOSA","اپراتور مونتاژ","position",departmentA.id);
+  const positionB=await createUnit("HRPOSB","اپراتور رنگ","position",departmentB.id);
+
+  const employeeAResponse=await call("/api/v1/hr/employees",{
+    ...json({employee_no:"EMP-1001",display_name:"کارمند مونتاژ",work_email:"employee.a@example.com",org_unit_id:departmentA.id,position_unit_id:positionA.id,hired_on:"2026-01-10"}),
+    headers:{"content-type":"application/json",cookie:adminCookie}
+  });
+  assert.equal(employeeAResponse.status,201);
+  const employeeA=(await parse(employeeAResponse)).data;
+  assert.equal(employeeA.employee_no,"EMP-1001");
+  assert.equal(employeeA.position_name,"اپراتور مونتاژ");
+  const employeeBResponse=await call("/api/v1/hr/employees",{
+    ...json({employee_no:"EMP-1002",display_name:"کارمند رنگ",org_unit_id:departmentB.id,position_unit_id:positionB.id,hired_on:"2026-02-01"}),
+    headers:{"content-type":"application/json",cookie:adminCookie}
+  });
+  assert.equal(employeeBResponse.status,201);
+  const employeeB=(await parse(employeeBResponse)).data;
+
+  assert.equal((await call("/api/v1/hr/employees",{
+    ...json({employee_no:"EMP-1001",display_name:"شماره تکراری",org_unit_id:departmentA.id,hired_on:"2026-03-01"}),
+    headers:{"content-type":"application/json",cookie:adminCookie}
+  })).status,409);
+  assert.equal((await call("/api/v1/hr/employees",{
+    ...json({employee_no:"EMP-1003",display_name:"تاریخ نامعتبر",org_unit_id:departmentA.id,hired_on:"2026-03-01",ended_on:"2026-02-01"}),
+    headers:{"content-type":"application/json",cookie:adminCookie}
+  })).status,400);
+  assert.equal((await call("/api/v1/hr/employees",json({employee_no:"EMP-1004",display_name:"بدون ورود",org_unit_id:departmentA.id,hired_on:"2026-03-01"}))).status,401);
+
+  const createdManager=await call("/api/v1/users",{
+    ...json({username:"hr.manager",email:"hr.manager@example.com",display_name:"مدیر منابع انسانی",password:"manager-password-123",roles:["org_manager"],scope_ids:[departmentA.id]}),
+    headers:{"content-type":"application/json",cookie:adminCookie}
+  });
+  assert.equal(createdManager.status,201);
+  const managerLogin=await call("/api/v1/auth/login",json({identifier:"hr.manager",password:"manager-password-123"}));
+  assert.equal(managerLogin.status,200);
+  const managerCookie=cookieFrom(managerLogin);
+
+  const managerList=await call("/api/v1/hr/employees?limit=50&offset=0",{headers:{cookie:managerCookie}});
+  assert.equal(managerList.status,200);
+  assert.deepEqual((await parse(managerList)).data.map(row=>row.employee_no),["EMP-1001"]);
+  assert.equal((await call("/api/v1/hr/employees/"+employeeB.id,{headers:{cookie:managerCookie}})).status,403);
+  assert.equal((await call("/api/v1/hr/employees",{
+    ...json({employee_no:"EMP-2001",display_name:"خارج از محدوده",org_unit_id:departmentB.id,hired_on:"2026-03-01"}),
+    headers:{"content-type":"application/json",cookie:managerCookie}
+  })).status,403);
+
+  const contract=await call("/api/v1/hr/contracts",{
+    ...json({employee_id:employeeA.id,contract_no:"CON-1001",contract_type:"مدت‌معین",start_date:"2026-01-10",end_date:"2026-12-31",signed_on:"2026-01-08",status:"active"}),
+    headers:{"content-type":"application/json",cookie:managerCookie}
+  });
+  assert.equal(contract.status,201);
+  const contractBody=(await parse(contract)).data;
+  assert.equal(contractBody.employee_no,"EMP-1001");
+  assert.equal((await call("/api/v1/hr/contracts?employee_id="+employeeB.id,{headers:{cookie:managerCookie}})).status,403);
+  assert.equal((await call("/api/v1/hr/contracts",{
+    ...json({employee_id:employeeB.id,contract_no:"CON-2002",contract_type:"مدت‌معین",start_date:"2026-01-10",status:"draft"}),
+    headers:{"content-type":"application/json",cookie:managerCookie}
+  })).status,403);
+  assert.equal((await call("/api/v1/hr/contracts",{
+    ...json({employee_id:employeeA.id,contract_no:"CON-1001",contract_type:"مدت‌معین",start_date:"2026-01-10",status:"draft"}),
+    headers:{"content-type":"application/json",cookie:managerCookie}
+  })).status,409);
+  assert.equal((await call("/api/v1/hr/contracts/"+contractBody.id,{
+    ...json({status:"active",end_date:"2025-12-31"}),method:"PATCH",headers:{"content-type":"application/json",cookie:managerCookie}
+  })).status,400);
+  assert.equal((await call("/api/v1/hr/contracts/"+contractBody.id,{
+    ...json({status:"expired"}),method:"PATCH",headers:{"content-type":"application/json",cookie:managerCookie}
+  })).status,200);
+
+  const terminated=await call("/api/v1/hr/employees/"+employeeA.id,{
+    ...json({employment_status:"terminated"}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}
+  });
+  assert.equal(terminated.status,400);
+  const ended=await call("/api/v1/hr/employees/"+employeeA.id,{
+    ...json({employment_status:"terminated",ended_on:"2026-10-01"}),method:"PATCH",headers:{"content-type":"application/json",cookie:adminCookie}
+  });
+  assert.equal(ended.status,200);
+  assert.equal((await parse(ended)).data.employment_status,"terminated");
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='employee.created'").get().n,2);
+  assert.equal(DB.sqlite.prepare("SELECT COUNT(*) n FROM audit_events WHERE action='employee_contract.created'").get().n,1);
 });
