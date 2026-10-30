@@ -23,7 +23,11 @@ const frontend=createServer(async(req,res)=>{
       const chunks=[];for await(const chunk of req)chunks.push(chunk);
       const upstream=await fetch(workerBase+pathname+new URL(req.url||"/",base).search,{method:req.method,headers,body:["GET","HEAD"].includes(req.method||"GET")?undefined:Buffer.concat(chunks),redirect:"manual"});
       const responseHeaders=Object.fromEntries(upstream.headers.entries());
-      res.writeHead(upstream.status,responseHeaders);res.end(Buffer.from(await upstream.arrayBuffer()));return;
+      // fetch() may transparently decompress the upstream body; forwarding stale
+      // transport headers can make the local browser/client reject valid JSON.
+      for(const name of ["content-encoding","content-length","transfer-encoding","connection","keep-alive"])delete responseHeaders[name];
+      const responseBody=Buffer.from(await upstream.arrayBuffer());
+      res.writeHead(upstream.status,responseHeaders);res.end(responseBody);return;
     }
     const relative=decodeURIComponent(pathname==="/"?"/index.html":pathname).replace(/^\/+/, "");
     const file=path.resolve(publicRoot,relative);
@@ -50,7 +54,7 @@ async function waitForServer() {
 async function api(pathname,options={}) {
   const response=await fetch(base+pathname,options);
   let body;
-  try{body=await response.json()}catch{throw new Error("Non-JSON response for "+pathname+": "+response.status)}
+  try{body=await response.json()}catch{const raw=await response.text().catch(()=>"<unreadable>");throw new Error("Non-JSON response for "+pathname+": "+response.status+" "+raw.slice(0,300))}
   return {response,body};
 }
 const post=(data,headers={})=>({method:"POST",headers:{"content-type":"application/json",...headers},body:JSON.stringify(data)});
