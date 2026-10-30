@@ -27,9 +27,14 @@
   }
   function showAuth(bootstrapRequired){
     $("appPanel").classList.add("hidden");$("authPanel").classList.remove("hidden");$("logoutButton").classList.add("hidden");
-    $("bootstrapForm").classList.toggle("hidden",!bootstrapRequired);$("loginForm").classList.toggle("hidden",bootstrapRequired);
-    $("authTitle").textContent=bootstrapRequired?"راه‌اندازی امن اولیه":"ورود به سامانه";
-    $("authDescription").textContent=bootstrapRequired?"نخستین مدیر را فقط یک بار بسازید. کلید راه‌اندازی باید در تنظیمات امن Worker باشد.":"با حساب فعال خود وارد شوید.";
+    // Normal visitors always see the login form. Initial administrator setup is
+    // available only through an explicit setup URL and only while bootstrap is required.
+    const setupMode=new URLSearchParams(location.search).get("setup")==="1" && bootstrapRequired;
+    $("bootstrapForm").classList.toggle("hidden",!setupMode);$("loginForm").classList.toggle("hidden",setupMode);
+    $("authTitle").textContent=setupMode?"راه‌اندازی امن اولیه":"ورود به سامانه";
+    $("authDescription").textContent=setupMode
+      ?"ایجاد نخستین مدیر فقط از مسیر راه‌اندازی امن انجام می‌شود."
+      :"برای ورود، نام کاربری یا ایمیل و رمز عبور خود را وارد کنید.";
   }
   function showApp(user){
     currentUser=user;$("authPanel").classList.add("hidden");$("appPanel").classList.remove("hidden");$("logoutButton").classList.remove("hidden");
