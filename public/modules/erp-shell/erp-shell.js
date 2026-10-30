@@ -19,6 +19,11 @@
     if(!response.ok)throw new Error(payload?.error?.message||"درخواست ناموفق بود.");
     return includeMeta?payload:payload.data;
   }
+  const hrFragmentResponse = await fetch(new URL("../hr/personnel/personnel.html", scriptUrl), { credentials: "same-origin" });
+  if (!hrFragmentResponse.ok) throw new Error("ماژول منابع انسانی بارگذاری نشد.");
+  $("hrPersonnelMount").innerHTML = await hrFragmentResponse.text();
+  const hrModule = await import(new URL("../hr/personnel/personnel.js", scriptUrl));
+  const hrPersonnel = hrModule.initializePersonnelModule({ api, notice, getUser: () => currentUser });
   const formData=form=>Object.fromEntries(new FormData(form).entries());
   function syncUserScopeRequirement(){
     const isAdmin=forms.users.elements.role.value==="admin",select=forms.users.elements.scope_ids;
@@ -47,6 +52,7 @@
     $("editPanel").classList.toggle("hidden",!canManage||!forms.edit.elements.id.value);
     $("usersPanel").classList.toggle("hidden",!isAdmin);
     $("auditPanel").classList.toggle("hidden",!isAdmin);
+    $("hrPersonnelPanel").classList.toggle("hidden",!canManage);
     syncUserScopeRequirement();
   }
   function populateParentSelect(select,oldValue,excludeId=null){
@@ -154,7 +160,9 @@
   async function refreshAuth(){
     try{
       const user=await api("/api/v1/auth/me");showApp(user);notice("ورود موفق بود؛ داده‌ها از D1 خوانده می‌شوند.","success");
-      await loadUnits();if(user.roles.includes("admin")){await loadUsers();await loadAudit(true);}
+      await loadUnits();
+      if(user.roles.includes("admin")){await loadUsers();await loadAudit(true);}
+      if(user.roles.includes("admin")||user.roles.includes("org_manager"))await hrPersonnel.load();
     }catch{
       currentUser=null;cancelEdit();
       try{
